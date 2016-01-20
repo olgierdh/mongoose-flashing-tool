@@ -17,6 +17,7 @@ class FirmwareImage {
  public:
   virtual ~FirmwareImage(){};
   virtual QMap<ulong, QByteArray> blobs() const = 0;
+  virtual QMap<ulong, QByteArray> *mutable_blobs() = 0;
   virtual QMap<QString, QByteArray> files() const {
     return QMap<QString, QByteArray>();
   };

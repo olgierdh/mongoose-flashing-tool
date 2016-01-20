@@ -30,6 +30,10 @@ class OldFirmwareImage : public FirmwareImage {
     return blobs_;
   }
 
+  QMap<ulong, QByteArray> *mutable_blobs() override {
+    return &blobs_;
+  }
+
   QMap<QString, QByteArray> files() const override {
     return files_;
   }

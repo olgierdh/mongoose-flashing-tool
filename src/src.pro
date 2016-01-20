@@ -1,11 +1,17 @@
 TEMPLATE = app
 !macx:TARGET = ../fnc
 macx:TARGET = "FNC"
-INCLUDEPATH += . ../..
+INCLUDEPATH += .
 QT += widgets serialport network
 CONFIG += c++11
 
-COMMON_PATH = ../../common
+exists(../common) {
+  COMMON_PATH = ../common
+  INCLUDEPATH += ..
+} else {
+  COMMON_PATH = ../../common
+  INCLUDEPATH += ../..
+}
 SPIFFS_PATH = $${COMMON_PATH}/spiffs
 UTIL_PATH = $${COMMON_PATH}/util
 

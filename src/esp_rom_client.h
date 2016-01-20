@@ -78,7 +78,6 @@ class ESPROMClient {
   bool connected_ = false;
   bool inverted_ = false;
   int commandTimeoutMs_ = 200;
-  int flashSPIMode_ = 0;
 
   ESPROMClient(const ESPROMClient &other) = delete;
 };

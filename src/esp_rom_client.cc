@@ -15,8 +15,6 @@ namespace {
 
 const int numConnectAttempts = 4;
 const int memWriteBlockSize = 4096;
-const int flashSectorSize = 4096;
-const int flashSectorsPerBlock = 16;
 
 }  // namespace
 
@@ -205,7 +203,7 @@ util::StatusOr<QByteArray> ESPROMClient::readMAC() {
       s << quint8(0xAC) << quint8(0xD0) << quint8(0x74);
       break;
     default:
-      return QS(util::error::INTERNAL, "Unknown OUI: " + oui);
+      return QS(util::error::INTERNAL, QString("Unknown OUI: ") + oui);
   }
   s << quint8((mac1 >> 8) & 0xff);
   s << quint8(mac1 & 0xff);

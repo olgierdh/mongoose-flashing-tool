@@ -351,11 +351,10 @@ class FlasherImpl : public Flasher {
             flashParamsFromString(
                 tr("dio,%1m,40m").arg(flashSize * 8 / 1048576)).ValueOrDie();
       }
-      fw_->blobs()[0][2] = (flashParams >> 8) & 0xff;
-      fw_->blobs()[0][3] = flashParams & 0xff;
+      (*fw_->mutable_blobs())[0][2] = (flashParams >> 8) & 0xff;
+      (*fw_->mutable_blobs())[0][3] = flashParams & 0xff;
       emit statusMessage(
-          tr("Adjusting flash params in the image 0x0000 to 0x%1")
-              .arg(QString(fw_->blobs()[0].mid(2, 2).toHex())),
+          tr("Setting flash params to 0x%1").arg(flashParams, 0, 16),
           true);
     }
 

@@ -1,0 +1,3 @@
+VERSION = 0.1
+TEMPLATE = subdirs
+SUBDIRS = src

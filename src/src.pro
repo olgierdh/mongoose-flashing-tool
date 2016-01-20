@@ -1,13 +1,13 @@
-VERSION = 0.1
-
 TEMPLATE = app
-!macx:TARGET = flashnchips
-macx:TARGET = "FlashNChips"
-INCLUDEPATH += .
+!macx:TARGET = ../fnc
+macx:TARGET = "FNC"
+INCLUDEPATH += . ../..
 QT += widgets serialport network
 CONFIG += c++11
 
-SPIFFS_PATH = ../common/spiffs
+COMMON_PATH = ../../common
+SPIFFS_PATH = $${COMMON_PATH}/spiffs
+UTIL_PATH = $${COMMON_PATH}/util
 
 QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.9
 
@@ -54,23 +54,19 @@ SOURCES += \
 DEFINES += VERSION=\\\"$$VERSION\\\"
 DEFINES += APP_NAME=\\\"$$TARGET\\\"
 
-# StatusOr
-exists(common/util/statusor.h) {
-  STATUS = ./common/util
-} else {
-  STATUS = ../common/util
-}
-INCLUDEPATH += $$STATUS/../..
-HEADERS += $${STATUS}/status.h $${STATUS}/statusor.h $${STATUS}/logging.h
-HEADERS += $${STATUS}/error_codes.h
-SOURCES += $${STATUS}/error_codes.cc $${STATUS}/logging.cc $${STATUS}/status.cc
+INCLUDEPATH += $${UTIL_PATH}
+SOURCES += \
+  $${UTIL_PATH}/error_codes.cc \
+  $${UTIL_PATH}/logging.cc \
+  $${UTIL_PATH}/status.cc
 
 INCLUDEPATH += $${SPIFFS_PATH}
-SOURCES += $${SPIFFS_PATH}/spiffs_cache.c
-SOURCES += $${SPIFFS_PATH}/spiffs_gc.c
-SOURCES += $${SPIFFS_PATH}/spiffs_nucleus.c
-SOURCES += $${SPIFFS_PATH}/spiffs_check.c
-SOURCES += $${SPIFFS_PATH}/spiffs_hydrogen.c
+SOURCES += \
+  $${SPIFFS_PATH}/spiffs_cache.c \
+  $${SPIFFS_PATH}/spiffs_gc.c \
+  $${SPIFFS_PATH}/spiffs_nucleus.c \
+  $${SPIFFS_PATH}/spiffs_check.c \
+  $${SPIFFS_PATH}/spiffs_hydrogen.c
 DEFINES += SPIFFS_TEST_VISUALISATION=1 SPIFFS_HAL_CALLBACK_EXTRA=1
 
 unix {

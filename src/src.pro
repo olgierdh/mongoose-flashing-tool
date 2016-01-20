@@ -5,6 +5,15 @@ INCLUDEPATH += .
 QT += widgets serialport network
 CONFIG += c++11
 
+CONFIG(asan) {
+  QMAKE_CC = clang-3.6
+  QMAKE_CFLAGS += -fsanitize=address -fcolor-diagnostics
+  QMAKE_CXX = clang++-3.6
+  QMAKE_CXXFLAGS += -fsanitize=address -fcolor-diagnostics
+  QMAKE_LINK = clang++-3.6
+  QMAKE_LFLAGS_DEBUG += -fsanitize=address
+}
+
 exists(../common) {
   COMMON_PATH = ../common
   INCLUDEPATH += ..

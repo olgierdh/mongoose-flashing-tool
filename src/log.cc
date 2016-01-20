@@ -11,13 +11,12 @@
 
 namespace {
 
-using std::cout;
-using std::cerr;
 using std::endl;
 
 QMutex mtx;  // guards verbosity and logfile.
 int verbosity = 0;
-std::unique_ptr<std::ostream> logfile(nullptr);
+std::ostream *logfile = nullptr;
+std::unique_ptr<std::ostream> logfile_owner;
 
 void outputHandler(QtMsgType type, const QMessageLogContext &context,
                    const QString &msg) {
@@ -104,10 +103,10 @@ void setVerbosity(int v) {
 
 void setFile(std::ostream *file) {
   QMutexLocker lock(&mtx);
-  if (logfile.get() == &cerr) {
-    logfile.release();
+  logfile = file;
+  if (file != &std::cout && file != &std::cerr && file != &std::clog) {
+    logfile_owner.reset(file);
   }
-  logfile.reset(file);
 }
 
 }  // namespace Log

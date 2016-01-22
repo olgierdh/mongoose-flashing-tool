@@ -354,8 +354,7 @@ class FlasherImpl : public Flasher {
       (*fw_->mutable_blobs())[0][2] = (flashParams >> 8) & 0xff;
       (*fw_->mutable_blobs())[0][3] = flashParams & 0xff;
       emit statusMessage(
-          tr("Setting flash params to 0x%1").arg(flashParams, 0, 16),
-          true);
+          tr("Setting flash params to 0x%1").arg(flashParams, 0, 16), true);
     }
 
     bool id_generated = false;

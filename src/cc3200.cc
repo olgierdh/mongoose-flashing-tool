@@ -29,6 +29,7 @@
 #include "config.h"
 #include "fs.h"
 #include "serial.h"
+#include "status_qt.h"
 
 #if (QT_VERSION < QT_VERSION_CHECK(5, 5, 0))
 #define qInfo qWarning
@@ -47,6 +48,8 @@ const int kDefaultTimeoutMs = 1000;
 
 const int kStorageID = 0;
 const char kFWFilename[] = "/sys/mcuimg.bin";
+const char kFWBundleFWPartName[] = "sys_mcuimg.bin";
+const char kFWBundleFSPartName[] = "fs.img";
 const char kDevConfFilename[] = "/conf/dev.json";
 const char kFS0Filename[] = "0.fs";
 const char kFS1Filename[] = "1.fs";
@@ -279,72 +282,26 @@ class FlasherImpl : public Flasher {
   Q_OBJECT
  public:
   FlasherImpl(){};
-  util::Status load(const QString &path) override {
-    QMutexLocker lock(&lock_);
-    QDir dir(path, "*.bin", QDir::Name,
-             QDir::Files | QDir::NoDotAndDotDot | QDir::Readable);
-    if (!dir.exists()) {
-      return util::Status(util::error::FAILED_PRECONDITION,
-                          tr("Directory does not exist").toStdString());
+  util::Status setFirmware(FirmwareBundle *fw) override {
+    if (!fw->blobs().contains(kFWBundleFWPartName)) {
+      return QS(util::error::INVALID_ARGUMENT,
+                tr("No %1 in fw bundle").arg(kFWBundleFWPartName));
     }
-    const auto files = dir.entryInfoList();
-    if (files.length() == 0) {
-      return util::Status(util::error::FAILED_PRECONDITION,
-                          tr("No files to flash").toStdString());
-    }
-    if (files.length() > 1) {
-      return util::Status(
-          util::error::FAILED_PRECONDITION,
-          tr("There must be exactly 1 *.bin file").toStdString());
-    }
-    QFile f(files[0].absoluteFilePath());
-    if (!f.open(QIODevice::ReadOnly)) {
-      return util::Status(util::error::ABORTED,
-                          tr("Failed to open %1")
-                              .arg(files[0].absoluteFilePath())
-                              .toStdString());
-    }
-    image_ = f.readAll();
-    if (image_.length() != files[0].size()) {
-      const int len = image_.length();
-      image_.clear();
-      return util::Status(util::error::UNAVAILABLE,
-                          tr("%1 has size %2, but readAll returned %3 bytes")
-                              .arg(files[0].fileName())
-                              .arg(files[0].size())
-                              .arg(len)
-                              .toStdString());
-    }
+    image_ = fw->blobs()[kFWBundleFWPartName];
     const int kMaxSize =
         kBlockSizes[sizeof(kBlockSizes) / sizeof(kBlockSizes[0]) - 1] * 255;
     if (image_.length() > kMaxSize) {
       image_.clear();
       return util::Status(util::error::INVALID_ARGUMENT,
-                          tr("%1 is too big. Maximum allowed size is %2")
-                              .arg(files[0].fileName())
+                          tr("Image is too big. Maximum allowed size is %2")
                               .arg(kMaxSize)
                               .toStdString());
     }
-
-    files_.clear();
-    if (dir.exists("fs")) {
-      QDir files_dir(dir.filePath("fs"), "", QDir::Name,
-                     QDir::Files | QDir::NoDotAndDotDot | QDir::Readable);
-      for (const auto &file : files_dir.entryInfoList()) {
-        qInfo() << "Loading" << file.fileName();
-        QFile f(file.absoluteFilePath());
-        if (!f.open(QIODevice::ReadOnly)) {
-          return util::Status(util::error::ABORTED,
-                              tr("Failed to open %1")
-                                  .arg(file.absoluteFilePath())
-                                  .toStdString());
-        }
-        files_.insert(file.fileName(), f.readAll());
-        f.close();
-      }
+    spiffs_image_.clear();
+    if (fw->blobs().contains(kFWBundleFSPartName)) {
+      spiffs_image_ = fw->blobs()[kFWBundleFSPartName];
     }
-
-    return loadSPIFFS(path);
+    return util::Status::OK;
   }
 
   util::Status setPort(QSerialPort *port) override {
@@ -446,36 +403,6 @@ class FlasherImpl : public Flasher {
   }
 
  private:
-  util::Status loadSPIFFS(const QString &path) {
-    spiffs_image_.clear();
-    QDir dir(path, "fs.img", QDir::Name,
-             QDir::Files | QDir::NoDotAndDotDot | QDir::Readable);
-    const auto files = dir.entryInfoList();
-    if (files.length() == 0) {
-      // No FS image, nothing to do.
-      return util::Status::OK;
-    }
-    QFile f(files[0].absoluteFilePath());
-    if (!f.open(QIODevice::ReadOnly)) {
-      return util::Status(util::error::ABORTED,
-                          tr("Failed to open %1")
-                              .arg(files[0].absoluteFilePath())
-                              .toStdString());
-    }
-    spiffs_image_ = f.readAll();
-    if (spiffs_image_.length() != files[0].size()) {
-      const int len = spiffs_image_.length();
-      spiffs_image_.clear();
-      return util::Status(util::error::UNAVAILABLE,
-                          tr("%1 has size %2, but readAll returned %3 bytes")
-                              .arg(files[0].fileName())
-                              .arg(files[0].size())
-                              .arg(len)
-                              .toStdString());
-    }
-    return util::Status::OK;
-  }
-
   util::Status runLocked() {
     util::Status st;
     progress_ = 0;
@@ -1075,10 +1002,6 @@ class CC3200HAL : public HAL {
         ftdi.ValueOrDie(), ftdi_free);
     return boot(ctx.get());
 #endif  // NO_LIBFTDI
-  }
-
-  std::unique_ptr<FirmwareLoader> fwLoader() const override {
-    return dirListingLoader();
   }
 };
 

@@ -16,6 +16,11 @@
 #include "config.h"
 #include "esp8266.h"
 #include "serial.h"
+#include "status_qt.h"
+
+#if (QT_VERSION < QT_VERSION_CHECK(5, 5, 0))
+#define qInfo qWarning
+#endif
 
 using std::cout;
 using std::cerr;
@@ -183,19 +188,30 @@ util::Status CLI::flash(const QString &portname, const QString &path,
   if (!config_status.ok()) {
     return config_status;
   }
-  util::Status err = f->load(path);
+  util::Status st;
+
+  auto fwbs = NewZipFWBundle(path);
+  if (!fwbs.ok()) {
+    return QSP("failed to load firmware bundle", fwbs.status());
+  }
+
+  FirmwareBundle *fwb = fwbs.ValueOrDie().get();
+  util::Status err = f->setFirmware(fwb);
   if (!err.ok()) {
     return err;
   }
+
+  qInfo() << "Flashing" << fwb->name() << fwb->platform().toUpper()
+          << fwb->buildId();
 
   util::StatusOr<QSerialPort *> r = connectSerial(info, speed);
   if (!r.ok()) {
     return r.status();
   }
   std::unique_ptr<QSerialPort> s(r.ValueOrDie());
-  err = f->setPort(s.get());
-  if (!err.ok()) {
-    return err;
+  st = f->setPort(s.get());
+  if (!st.ok()) {
+    return st;
   }
   bool success = false;
   connect(f.get(), &Flasher::done, [&success](QString msg, bool ok) {

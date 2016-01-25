@@ -33,12 +33,11 @@ HEADERS += \
   config.h \
   dialog.h \
   esp8266.h \
-  esp8266_fw_loader.h \
   esp_flasher_client.h \
   esp_rom_client.h \
   flasher.h \
   fs.h \
-  fw_loader.h \
+  fw_bundle.h \
   log.h \
   log_viewer.h \
   prompter.h \
@@ -54,12 +53,12 @@ SOURCES += \
   config.cc \
   dialog.cc \
   esp8266.cc \
-  esp8266_fw_loader.cc \
   esp_flasher_client.cc \
   esp_rom_client.cc \
   flasher.cc \
   fs.cc \
-  fw_loader.cc \
+  fw_bundle.cc \
+  fw_bundle_zip.cc \
   log.cc \
   log_viewer.cc \
   main.cc \

@@ -7,6 +7,8 @@
 
 #include <common/util/status.h>
 
+#include "fw_bundle.h"
+
 class Config;
 class QByteArray;
 class QSerialPortInfo;
@@ -20,9 +22,9 @@ class Flasher : public QObject {
 
  public:
   virtual ~Flasher(){};
-  // load should read firmware image from a given path and return an empty
-  // string if the image is good.
-  virtual util::Status load(const QString &path) = 0;
+  // Sets the firmware bundle to be flashed. Implementation should perform any
+  // platform-specific validation necessary and return OK if the fw is good.
+  virtual util::Status setFirmware(FirmwareBundle *fw) = 0;
   // setPort tells which port to use for flashing. port must not be destroyed
   // between calling run() and getting back done() signal. Caller retains port
   // ownership.

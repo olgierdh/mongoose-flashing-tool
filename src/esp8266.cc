@@ -23,7 +23,6 @@
 #include <common/util/statusor.h>
 
 #include "config.h"
-#include "esp8266_fw_loader.h"
 #include "esp_flasher_client.h"
 #include "esp_rom_client.h"
 #include "fs.h"
@@ -192,13 +191,36 @@ class FlasherImpl : public Flasher {
     return util::Status::OK;
   }
 
-  util::Status load(const QString &path) override {
+  util::Status setFirmware(FirmwareBundle *fw) override {
     QMutexLocker lock(&lock_);
-    auto r = fw_loader_.load(path);
-    if (!r.ok()) {
-      return r.status();
+    for (const auto &p : fw->parts()) {
+      const QString addrStr = p.attrs["addr"];
+      if (addrStr == "") {
+        return QS(util::error::INVALID_ARGUMENT,
+                  QObject::tr("part %1 has no address specified").arg(p.name));
+      }
+      bool ok;
+      const quint32 addr = addrStr.toUInt(&ok, 0);
+      if (!ok) {
+        return QS(util::error::INVALID_ARGUMENT,
+                  QObject::tr("part %1 has invalid address specified (%2)")
+                      .arg(p.name)
+                      .arg(addrStr));
+      }
+      const QString src = p.attrs["src"];
+      if (src == "") {
+        return QS(util::error::INVALID_ARGUMENT,
+                  QObject::tr("part %1 has no source specified").arg(p.name));
+      }
+      if (!fw->blobs().contains(src)) {
+        return QS(util::error::INVALID_ARGUMENT,
+                  QObject::tr("source for part %1 does not exist").arg(p.name));
+      }
+      QByteArray data = fw->blobs()[src];
+      qInfo() << p.name << ":" << data.length() << "@" << hex << showbase
+              << addr;
+      blobs_[addr] = data;
     }
-    fw_ = r.MoveValueOrDie();
     return util::Status::OK;
   }
 
@@ -210,16 +232,13 @@ class FlasherImpl : public Flasher {
 
   int totalBytes() const override {
     QMutexLocker lock(&lock_);
-    if (fw_ == nullptr) {
-      return 0;
-    }
     int r = 0;
-    for (const auto &bytes : fw_->blobs().values()) {
+    for (const auto &bytes : blobs_.values()) {
       r += bytes.length();
     }
     // Add FS once again for reading.
-    if (merge_flash_filesystem_ && fw_->blobs().contains(spiffs_offset_)) {
-      r += fw_->blobs()[spiffs_offset_].length();
+    if (merge_flash_filesystem_ && blobs_.contains(spiffs_offset_)) {
+      r += blobs_[spiffs_offset_].length();
     }
     return r;
   }
@@ -272,7 +291,7 @@ class FlasherImpl : public Flasher {
 
  private:
   util::Status runLocked() {
-    if (fw_ == nullptr) {
+    if (blobs_.empty()) {
       return QS(util::error::FAILED_PRECONDITION, tr("No firmware loaded"));
     }
     progress_ = 0;
@@ -334,11 +353,10 @@ class FlasherImpl : public Flasher {
     }
     qInfo() << "Flash size:" << flashSize;
 
-    st = sanityCheckImages(fw_->blobs(), flashSize,
-                           flasher_client.kFlashSectorSize);
+    st = sanityCheckImages(blobs_, flashSize, flasher_client.kFlashSectorSize);
     if (!st.ok()) return st;
 
-    if (fw_->blobs().contains(0) && fw_->blobs()[0].length() >= 4) {
+    if (blobs_.contains(0) && blobs_[0].length() >= 4) {
       int flashParams = 0;
       if (override_flash_params_ >= 0) {
         flashParams = override_flash_params_;
@@ -351,19 +369,19 @@ class FlasherImpl : public Flasher {
             flashParamsFromString(
                 tr("dio,%1m,40m").arg(flashSize * 8 / 1048576)).ValueOrDie();
       }
-      (*fw_->mutable_blobs())[0][2] = (flashParams >> 8) & 0xff;
-      (*fw_->mutable_blobs())[0][3] = flashParams & 0xff;
+      blobs_[0][2] = (flashParams >> 8) & 0xff;
+      blobs_[0][3] = flashParams & 0xff;
       emit statusMessage(
           tr("Setting flash params to 0x%1").arg(flashParams, 0, 16), true);
     }
 
     bool id_generated = false;
-    if (generate_id_if_none_found_ && !fw_->blobs().contains(idBlockOffset)) {
+    if (generate_id_if_none_found_ && !blobs_.contains(idBlockOffset)) {
       auto res = findIdLocked(&flasher_client);
       if (res.ok()) {
         if (!res.ValueOrDie()) {
           emit statusMessage(tr("Generating new ID"), true);
-          fw_->blobs()[idBlockOffset] = makeIDBlock(id_hostname_);
+          blobs_[idBlockOffset] = makeIDBlock(id_hostname_);
           id_generated = true;
         } else {
           emit statusMessage(tr("Existing ID found"), true);
@@ -380,13 +398,13 @@ class FlasherImpl : public Flasher {
                    .arg(spiffs_size_)
                    .arg(spiffs_offset_, 0, 16)
                    .toUtf8();
-    if (merge_flash_filesystem_ && fw_->blobs().contains(spiffs_offset_)) {
+    if (merge_flash_filesystem_ && blobs_.contains(spiffs_offset_)) {
       auto res = mergeFlashLocked(&flasher_client);
       if (res.ok()) {
         if (res.ValueOrDie().size() > 0) {
-          fw_->blobs()[spiffs_offset_] = res.ValueOrDie();
+          blobs_[spiffs_offset_] = res.ValueOrDie();
         } else {
-          fw_->blobs().remove(spiffs_offset_);
+          blobs_.remove(spiffs_offset_);
         }
         emit statusMessage(tr("Merged flash content"), true);
       } else {
@@ -405,9 +423,8 @@ class FlasherImpl : public Flasher {
       qInfo() << "No SPIFFS image in new firmware";
     }
 
-    auto flashImages = minimize_writes_
-                           ? dedupImages(&flasher_client, fw_->blobs())
-                           : fw_->blobs();
+    auto flashImages =
+        minimize_writes_ ? dedupImages(&flasher_client, blobs_) : blobs_;
 
     for (ulong image_addr : flashImages.keys()) {
       QByteArray data = flashImages[image_addr];
@@ -448,7 +465,7 @@ class FlasherImpl : public Flasher {
       progress_ += origLength;
     }
 
-    st = verifyImages(&flasher_client, fw_->blobs());
+    st = verifyImages(&flasher_client, blobs_);
     if (!st.ok()) return QSP("verification failed", st);
 
     // Ideally, we'd like to tell flasher stub to boot the firmware here,
@@ -527,9 +544,6 @@ class FlasherImpl : public Flasher {
   // or by the software update utility, while the core system uploaded by
   // the flasher should only upload a few core files.
   util::StatusOr<QByteArray> mergeFlashLocked(ESPFlasherClient *fc) {
-    if (fw_ == nullptr) {
-      return QS(util::error::FAILED_PRECONDITION, tr("No firmware loaded"));
-    }
     emit statusMessage(tr("Reading file system image (%1 @ %2)...")
                            .arg(spiffs_size_)
                            .arg(spiffs_offset_, 0, 16),
@@ -552,11 +566,7 @@ class FlasherImpl : public Flasher {
                     << f.errorString();
       }
     }
-    auto merged =
-        mergeFilesystems(dev_fs.ValueOrDie(), fw_->blobs()[spiffs_offset_]);
-    if (merged.ok() && !fw_->files().empty()) {
-      merged = mergeFiles(merged.ValueOrDie(), fw_->files());
-    }
+    auto merged = mergeFilesystems(dev_fs.ValueOrDie(), blobs_[spiffs_offset_]);
     if (!merged.ok()) {
       QString msg = tr("Failed to merge file system: ") +
                     QString(merged.status().ToString().c_str()) +
@@ -570,7 +580,7 @@ class FlasherImpl : public Flasher {
         case 0:
           return merged.status();
         case 1:
-          return fw_->blobs()[spiffs_offset_];
+          return blobs_[spiffs_offset_];
         case 2:
           return QByteArray();
       }
@@ -691,8 +701,7 @@ class FlasherImpl : public Flasher {
   Prompter *prompter_;
 
   mutable QMutex lock_;
-  FirmwareLoader fw_loader_;
-  std::unique_ptr<FirmwareImage> fw_;
+  QMap<ulong, QByteArray> blobs_;
   QSerialPort *port_;
   std::unique_ptr<ESPROMClient> rom_;
   int progress_ = 0;
@@ -750,10 +759,6 @@ class ESP8266HAL : public HAL {
     util::Status st = rom.connect();
     if (!st.ok()) return QSP("failed to communicate to ROM", st);
     return rom.rebootIntoFirmware();
-  }
-
-  std::unique_ptr<::FirmwareLoader> fwLoader() const override {
-    return dirListingLoader();
   }
 };
 

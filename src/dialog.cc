@@ -32,6 +32,7 @@
 #include "config.h"
 #include "esp8266.h"
 #include "flasher.h"
+#include "fw_bundle.h"
 #include "log.h"
 #include "log_viewer.h"
 #include "serial.h"
@@ -139,11 +140,6 @@ MainDialog::MainDialog(Config *config, QWidget *parent)
   enabled_in_state_.insert(ui_.connectBtn, Connected);
   enabled_in_state_.insert(ui_.connectBtn, NotConnected);
   enabled_in_state_.insert(ui_.connectBtn, Terminal);
-  enabled_in_state_.insert(ui_.detectBtn, NoPortSelected);
-  enabled_in_state_.insert(ui_.detectBtn, NotConnected);
-  enabled_in_state_.insert(ui_.firmwareSelector, Connected);
-  enabled_in_state_.insert(ui_.firmwareSelector, NotConnected);
-  enabled_in_state_.insert(ui_.firmwareSelector, Terminal);
   enabled_in_state_.insert(ui_.flashBtn, Connected);
   enabled_in_state_.insert(ui_.flashBtn, NotConnected);
   enabled_in_state_.insert(ui_.flashBtn, Terminal);
@@ -159,10 +155,8 @@ MainDialog::MainDialog(Config *config, QWidget *parent)
 
 #if (QT_VERSION < QT_VERSION_CHECK(5, 4, 0))
   QTimer::singleShot(0, this, SLOT(updatePortList()));
-  QTimer::singleShot(0, this, SLOT(updateFWList()));
 #else
   QTimer::singleShot(0, this, &MainDialog::updatePortList);
-  QTimer::singleShot(0, this, &MainDialog::updateFWList);
 #endif
   refresh_timer_ = new QTimer(this);
   refresh_timer_->start(500);
@@ -190,14 +184,15 @@ MainDialog::MainDialog(Config *config, QWidget *parent)
             }
           });
 
-  connect(ui_.detectBtn, &QPushButton::clicked, this, &MainDialog::detectPorts);
-
   connect(ui_.platformSelector, &QComboBox::currentTextChanged, this,
           &MainDialog::resetHAL);
   connect(ui_.platformSelector, &QComboBox::currentTextChanged,
           [this](QString platform) {
             settings_.setValue("selectedPlatform", platform);
           });
+
+  connect(ui_.browseBtn, &QPushButton::clicked, this,
+          &MainDialog::selectFirmwareFile);
 
   connect(ui_.flashBtn, &QPushButton::clicked, this, &MainDialog::loadFirmware);
 
@@ -304,11 +299,13 @@ void MainDialog::resetHAL(QString name) {
   } else {
     qFatal("Unknown platform: %s", name.toStdString().c_str());
   }
-#if (QT_VERSION < QT_VERSION_CHECK(5, 4, 0))
-  QTimer::singleShot(0, this, SLOT(updateFWList()));
-#else
-  QTimer::singleShot(0, this, &MainDialog::updateFWList);
-#endif
+  {
+    const QString selectedPlatform = ui_.platformSelector->currentText();
+    const QString fwForPlatform =
+        settings_.value(QString("selectedFirmware_%1").arg(selectedPlatform),
+                        "").toString();
+    ui_.firmwareFileName->setText(fwForPlatform);
+  }
 }
 
 void MainDialog::showPrompt(
@@ -591,62 +588,18 @@ void MainDialog::updatePortList() {
   }
 }
 
-void MainDialog::detectPorts() {
-  if (hal_ == nullptr) {
-    qFatal("No HAL instance");
+void MainDialog::selectFirmwareFile() {
+  QString curDir;
+  const QString curFileName = ui_.firmwareFileName->text();
+  if (curFileName != "") {
+    QFileInfo curFileInfo(curFileName);
+    curDir = curFileInfo.path();
   }
-  if (!skip_detect_warning_) {
-    auto choice = QMessageBox::warning(
-        this, tr("Warning"),
-        tr("During detection few bytes of data will be written to each serial "
-           "port. This may cause some equipment connected to those ports to "
-           "misbehave. If you have something other than the device you intend "
-           "to flash connected to one of the serial ports, please disconnect "
-           "them now or press \"No\" and select the port manually.\n\nDo you "
-           "wish to proceed?"),
-        QMessageBox::Yes | QMessageBox::YesToAll | QMessageBox::No,
-        QMessageBox::No);
-
-    if (choice == QMessageBox::No) {
-      return;
-    }
-    if (choice == QMessageBox::YesToAll) {
-      settings_.setValue("skipDetectWarning", true);
-      skip_detect_warning_ = true;
-    }
+  QString fileName = QFileDialog::getOpenFileName(
+      this, tr("Select firmware file"), curDir, tr("Firmware files (*.zip)"));
+  if (fileName != "") {
+    loadFirmwareBundle(fileName);  // Take a peek, we'll reload before flashing
   }
-  ui_.detectBtn->setDisabled(true);
-  ui_.portSelector->setDisabled(true);
-
-  ui_.portSelector->clear();
-  auto ports = QSerialPortInfo::availablePorts();
-  int firstDetected = -1;
-  for (int i = 0; i < ports.length(); i++) {
-    QString prefix = "";
-    if (hal_->probe(ports[i]).ok()) {
-      prefix = "✓ ";
-      if (firstDetected < 0) {
-        firstDetected = i;
-      }
-    }
-    ui_.portSelector->addItem(prefix + ports[i].portName(),
-                              ports[i].portName());
-  }
-
-  if (firstDetected >= 0) {
-    ui_.portSelector->setCurrentIndex(firstDetected);
-  } else {
-    QMessageBox::information(
-        this, tr("No devices detected"),
-        tr("Could not detect the device on any of serial ports. Make sure the "
-           "device is properly wired and connected and you have drivers for "
-           "the USB-to-serial adapter. See <a "
-           "href=\"https://github.com/cesanta/smart.js/blob/master/smartjs/"
-           "platforms/esp8266/flashing.md\">this page</a> for more details."));
-  }
-
-  ui_.portSelector->setDisabled(false);
-  ui_.detectBtn->setDisabled(false);
 }
 
 void MainDialog::flashingDone(QString msg, bool success) {
@@ -670,36 +623,15 @@ void MainDialog::flashingDone(QString msg, bool success) {
   }
 }
 
-void MainDialog::updateFWList() {
-  if (hal_ == nullptr) {
-    qFatal("No HAL instance");
-  }
-  auto fwloader = hal_->fwLoader();
-  ui_.firmwareSelector->clear();
-  fwImages_ = fwloader->list(
-      fwDir_.absoluteFilePath(QString::fromStdString(hal_->name())));
-  for (const FirmwareInfo &fw : fwImages_) {
-    ui_.firmwareSelector->addItem(fw.name());
-  }
-}
-
 void MainDialog::loadFirmware() {
   if (hal_ == nullptr) {
     qFatal("No HAL instance");
   }
-  QString name = ui_.firmwareSelector->currentText();
-  QString path;
-  if (name != "") {
-    path = fwImages_[ui_.firmwareSelector->currentIndex()].location();
-  } else {
-    path = QFileDialog::getExistingDirectory(this,
-                                             tr("Load firmware from directory"),
-                                             "", QFileDialog::ShowDirsOnly);
-    if (path.isEmpty()) {
-      ui_.statusMessage->setText(tr("No firmware selected"));
-      ui_.statusMessage->show();
-      return;
-    }
+  QString path = ui_.firmwareFileName->text();
+  if (path.isEmpty()) {
+    ui_.statusMessage->setText(tr("No firmware selected"));
+    ui_.statusMessage->show();
+    return;
   }
   QString portName = ui_.portSelector->currentData().toString();
   if (portName == "") {
@@ -713,18 +645,22 @@ void MainDialog::loadFirmware() {
     ui_.statusMessage->show();
     return;
   }
-  util::Status err = f->load(path);
-  if (!err.ok()) {
-    ui_.statusMessage->setText(err.error_message().c_str());
-    ui_.statusMessage->show();
+  std::unique_ptr<FirmwareBundle> fw = loadFirmwareBundle(path);
+  if (fw == nullptr) {
+    // Error already shown by loadFirmwareBundle.
+    return;
+  }
+  s = f->setFirmware(fw.get());
+  if (!s.ok()) {
+    ui_.statusMessage->setText(s.ToString().c_str());
     return;
   }
   if (state_ == Terminal) {
     disconnectTerminal();
   }
-  err = openSerial();
-  if (!err.ok()) {
-    ui_.statusMessage->setText(err.error_message().c_str());
+  s = openSerial();
+  if (!s.ok()) {
+    ui_.statusMessage->setText(s.error_message().c_str());
     return;
   }
   if (state_ != Connected) {
@@ -732,9 +668,9 @@ void MainDialog::loadFirmware() {
     return;
   }
   setState(Flashing);
-  err = f->setPort(serial_port_.get());
-  if (!err.ok()) {
-    ui_.statusMessage->setText(err.error_message().c_str());
+  s = f->setPort(serial_port_.get());
+  if (!s.ok()) {
+    ui_.statusMessage->setText(s.error_message().c_str());
     return;
   }
 
@@ -928,6 +864,37 @@ void MainDialog::sendQueuedCommand() {
 void MainDialog::showSettings() {
   settingsDlg_.setModal(true);
   settingsDlg_.show();
+}
+
+std::unique_ptr<FirmwareBundle> MainDialog::loadFirmwareBundle(
+    const QString &fileName) {
+  auto fwbs = NewZipFWBundle(fileName);
+  if (!fwbs.ok()) {
+    QMessageBox::critical(this, tr("Error"),
+                          tr("Failed to load %1: %2")
+                              .arg(fileName)
+                              .arg(fwbs.status().ToString().c_str()));
+    return nullptr;
+  }
+  std::unique_ptr<FirmwareBundle> fwb = fwbs.MoveValueOrDie();
+  if (fwb->platform().toUpper() !=
+      ui_.platformSelector->currentText().toUpper()) {
+    QMessageBox::critical(this, tr("Error"),
+                          tr("Platform mismatch: %1 vs %2")
+                              .arg(fwb->platform())
+                              .arg(ui_.platformSelector->currentText()));
+    return nullptr;
+  }
+  ui_.firmwareFileName->setText(fileName);
+  ui_.statusMessage->setText(tr("Loaded %1 %2 %3")
+                                 .arg(fwb->name())
+                                 .arg(fwb->platform().toUpper())
+                                 .arg(fwb->buildId()));
+  ui_.statusMessage->show();
+  settings_.setValue(
+      QString("selectedFirmware_%1").arg(ui_.platformSelector->currentText()),
+      fileName);
+  return std::move(fwb);
 }
 
 void MainDialog::updateConfig(const QString &name) {

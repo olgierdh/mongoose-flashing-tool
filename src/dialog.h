@@ -17,9 +17,9 @@
 #include <QStringList>
 #include <QThread>
 
-#include <common/util/status.h>
+#include <common/util/statusor.h>
 
-#include "fw_loader.h"
+#include "fw_bundle.h"
 #include "hal.h"
 #include "log_viewer.h"
 #include "prompter.h"
@@ -60,8 +60,7 @@ class MainDialog : public QMainWindow {
 
  private slots:
   void updatePortList();
-  void detectPorts();
-  void updateFWList();
+  void selectFirmwareFile();
   void flashingDone(QString msg, bool success);
   util::Status disconnectTerminal();
   void readSerial();
@@ -96,6 +95,8 @@ signals:
 #endif
 
  private:
+  std::unique_ptr<FirmwareBundle> loadFirmwareBundle(const QString &fileName);
+
   Config *config_ = nullptr;
   bool skip_detect_warning_ = false;
   std::unique_ptr<QThread> worker_;
@@ -114,7 +115,6 @@ signals:
   std::unique_ptr<QFile> console_log_;
   PrompterImpl *prompter_;
   SettingsDialog settingsDlg_;
-  QList<FirmwareInfo> fwImages_;
   std::unique_ptr<LogViewer> log_viewer_;
 
   QNetworkConfigurationManager net_mgr_;

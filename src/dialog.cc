@@ -33,6 +33,7 @@
 #include "esp8266.h"
 #include "flasher.h"
 #include "log.h"
+#include "log_viewer.h"
 #include "serial.h"
 #include "ui_about.h"
 
@@ -239,6 +240,8 @@ MainDialog::MainDialog(Config *config, QWidget *parent)
       QMessageBox::warning(this, tr("Error"), tr("Failed to open %1").arg(url));
     }
   });
+
+  connect(ui_.actionLog, &QAction::triggered, this, &MainDialog::showLogViewer);
 
   connect(ui_.actionAbout_Qt, &QAction::triggered, qApp,
           &QApplication::aboutQt);
@@ -768,6 +771,18 @@ void MainDialog::loadFirmware() {
 #endif
 }
 
+void MainDialog::showLogViewer() {
+  if (log_viewer_ == nullptr) {
+    log_viewer_.reset(new LogViewer(nullptr));
+    log_viewer_->show();
+    connect(log_viewer_.get(), &LogViewer::closed, this,
+            &MainDialog::logViewerClosed);
+  } else {
+    log_viewer_->raise();
+    log_viewer_->activateWindow();
+  }
+}
+
 void MainDialog::showAboutBox() {
   QWidget *w = new QWidget;
   Ui_About about;
@@ -775,6 +790,10 @@ void MainDialog::showAboutBox() {
   about.versionLabel->setText(
       tr("Version: %1").arg(qApp->applicationVersion()));
   w->show();
+}
+
+void MainDialog::logViewerClosed() {
+  log_viewer_.reset();
 }
 
 bool MainDialog::eventFilter(QObject *obj, QEvent *e) {
@@ -815,6 +834,7 @@ bool MainDialog::eventFilter(QObject *obj, QEvent *e) {
 void MainDialog::closeEvent(QCloseEvent *event) {
   settings_.setValue("window/geometry", saveGeometry());
   settings_.setValue("window/state", saveState());
+  if (log_viewer_ != nullptr) log_viewer_->close();
   QMainWindow::closeEvent(event);
 }
 

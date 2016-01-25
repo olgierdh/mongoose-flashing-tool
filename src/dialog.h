@@ -21,6 +21,7 @@
 
 #include "fw_loader.h"
 #include "hal.h"
+#include "log_viewer.h"
 #include "prompter.h"
 #include "settings.h"
 #include "ui_main.h"
@@ -56,6 +57,7 @@ class MainDialog : public QMainWindow {
  public slots:
   void loadFirmware();
   void connectDisconnectTerminal();
+
  private slots:
   void updatePortList();
   void detectPorts();
@@ -75,7 +77,10 @@ class MainDialog : public QMainWindow {
 
   void setState(State);
   void enableControlsForCurrentState();
+  void showLogViewer();
   void showAboutBox();
+
+  void logViewerClosed();
 
   void showPrompt(QString text,
                   QList<QPair<QString, QMessageBox::ButtonRole>> buttons);
@@ -110,12 +115,13 @@ signals:
   PrompterImpl *prompter_;
   SettingsDialog settingsDlg_;
   QList<FirmwareInfo> fwImages_;
+  std::unique_ptr<LogViewer> log_viewer_;
 
   QNetworkConfigurationManager net_mgr_;
 
   State state_ = NoPortSelected;
 
-  Ui_MainWindow ui_;
+  Ui::MainWindow ui_;
 };
 
 #endif  // DIALOG_H

@@ -247,6 +247,7 @@
     <addaction name="actionHelp"/>
     <addaction name="actionOpenWebsite"/>
     <addaction name="actionSend_feedback"/>
+    <addaction name="actionLog"/>
     <addaction name="actionAbout"/>
     <addaction name="actionAbout_Qt"/>
    </widget>
@@ -270,6 +271,14 @@
   <action name="actionConfigure_Wi_Fi">
    <property name="text">
     <string>Connect to Wi-Fi</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::NoRole</enum>
+   </property>
+  </action>
+  <action name="actionLog">
+   <property name="text">
+    <string>Log</string>
    </property>
    <property name="menuRole">
     <enum>QAction::NoRole</enum>

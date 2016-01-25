@@ -40,6 +40,7 @@ HEADERS += \
   fs.h \
   fw_loader.h \
   log.h \
+  log_viewer.h \
   prompter.h \
   serial.h \
   settings.h \
@@ -60,6 +61,7 @@ SOURCES += \
   fs.cc \
   fw_loader.cc \
   log.cc \
+  log_viewer.cc \
   main.cc \
   serial.cc \
   settings.cc \
@@ -91,7 +93,7 @@ unix {
 }
 
 RESOURCES = blobs.qrc images.qrc
-FORMS = main.ui about.ui settings.ui
+FORMS = main.ui about.ui log_viewer.ui settings.ui
 
 # libftdi stuff.
 macx {

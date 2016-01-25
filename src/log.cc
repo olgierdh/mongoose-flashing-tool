@@ -4,23 +4,39 @@
 #include <memory>
 
 #include <QByteArray>
+#include <QList>
 #include <QMutex>
 #include <QMutexLocker>
-#include <QString>
-#include <QtGlobal>
 
 namespace {
 
+const int kMaxBufferedLines = 10000;
+
 using std::endl;
 
-QMutex mtx;  // guards verbosity and logfile.
+class LocalLogSource : public Log::EntrySource {
+ public:
+  virtual ~LocalLogSource() {
+  }
+  void addLogEntry(const Log::Entry &e) {
+    emit newLogEntry(e);
+  }
+};
+
+QMutex mtx;  // guards verbosity, logfile and lines.
 int verbosity = 0;
 std::ostream *logfile = nullptr;
 std::unique_ptr<std::ostream> logfile_owner;
+QList<Log::Entry> lines;
+std::unique_ptr<LocalLogSource> logSource;
 
 void outputHandler(QtMsgType type, const QMessageLogContext &context,
                    const QString &msg) {
   QMutexLocker lock(&mtx);
+  const Log::Entry e{type, context.file, context.line, msg};
+  lines.push_back(e);
+  if (lines.length() > kMaxBufferedLines) lines.pop_front();
+  logSource->addLogEntry(e);
   if (logfile == nullptr) {
     return;
   }
@@ -32,9 +48,6 @@ void outputHandler(QtMsgType type, const QMessageLogContext &context,
         if (context.file != NULL) {
           *logfile << context.file << ":" << context.line;
         }
-        if (context.function != NULL) {
-          *logfile << " (" << context.function << "): ";
-        }
         *logfile << localMsg.constData() << endl;
       }
       break;
@@ -44,9 +57,6 @@ void outputHandler(QtMsgType type, const QMessageLogContext &context,
         *logfile << "INFO: ";
         if (context.file != NULL) {
           *logfile << context.file << ":" << context.line;
-        }
-        if (context.function != NULL) {
-          *logfile << " (" << context.function << "): ";
         }
         *logfile << localMsg.constData() << endl;
       }
@@ -58,9 +68,6 @@ void outputHandler(QtMsgType type, const QMessageLogContext &context,
         if (context.file != NULL) {
           *logfile << context.file << ":" << context.line;
         }
-        if (context.function != NULL) {
-          *logfile << " (" << context.function << "): ";
-        }
         *logfile << localMsg.constData() << endl;
       }
       break;
@@ -70,9 +77,6 @@ void outputHandler(QtMsgType type, const QMessageLogContext &context,
         if (context.file != NULL) {
           *logfile << context.file << ":" << context.line;
         }
-        if (context.function != NULL) {
-          *logfile << " (" << context.function << "): ";
-        }
         *logfile << localMsg.constData() << endl;
       }
       break;
@@ -80,9 +84,6 @@ void outputHandler(QtMsgType type, const QMessageLogContext &context,
       *logfile << "FATAL: ";
       if (context.file != NULL) {
         *logfile << context.file << ":" << context.line;
-      }
-      if (context.function != NULL) {
-        *logfile << " (" << context.function << "): ";
       }
       *logfile << localMsg.constData() << endl;
       abort();
@@ -93,6 +94,8 @@ void outputHandler(QtMsgType type, const QMessageLogContext &context,
 namespace Log {
 
 void init() {
+  qRegisterMetaType<Log::Entry>("Log::Entry");
+  logSource.reset(new LocalLogSource);
   qInstallMessageHandler(outputHandler);
 }
 
@@ -107,6 +110,15 @@ void setFile(std::ostream *file) {
   if (file != &std::cout && file != &std::cerr && file != &std::clog) {
     logfile_owner.reset(file);
   }
+}
+
+QList<Entry> getBufferedLines() {
+  QMutexLocker l(&mtx);
+  return lines;
+}
+
+EntrySource *entrySource() {
+  return logSource.get();
 }
 
 }  // namespace Log

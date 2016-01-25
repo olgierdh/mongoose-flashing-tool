@@ -46,39 +46,22 @@ const char kDefaultSPIFFSSize[] = "65536";
 const char kNoMinimizeWritesOption[] = "esp8266-no-minimize-writes";
 
 const int kDefaultFlashBaudRate = 230400;
-const ulong idBlockOffset = 0x10000;
-const ulong idBlockSizeSectors = 1;
 /* Last 16K of flash are reserved for system params. */
 const quint32 kSystemParamsAreaSize = 16 * 1024;
 
 class FlasherImpl : public Flasher {
   Q_OBJECT
  public:
-  FlasherImpl(Prompter *prompter)
-      : prompter_(prompter), id_hostname_("api.cesanta.com") {
+  FlasherImpl(Prompter *prompter) : prompter_(prompter) {
   }
 
   util::Status setOption(const QString &name, const QVariant &value) override {
-    if (name == kIdDomainOption) {
-      if (value.type() != QVariant::String) {
-        return util::Status(util::error::INVALID_ARGUMENT,
-                            "value must be a string");
-      }
-      id_hostname_ = value.toString();
-      return util::Status::OK;
-    } else if (name == kMergeFSOption) {
+    if (name == kMergeFSOption) {
       if (value.type() != QVariant::Bool) {
         return util::Status(util::error::INVALID_ARGUMENT,
                             "value must be boolean");
       }
       merge_flash_filesystem_ = value.toBool();
-      return util::Status::OK;
-    } else if (name == kSkipIdGenerationOption) {
-      if (value.type() != QVariant::Bool) {
-        return util::Status(util::error::INVALID_ARGUMENT,
-                            "value must be boolean");
-      }
-      generate_id_if_none_found_ = !value.toBool();
       return util::Status::OK;
     } else if (name == kFlashParamsOption) {
       if (value.type() == QVariant::String) {
@@ -147,8 +130,7 @@ class FlasherImpl : public Flasher {
   util::Status setOptionsFromConfig(const Config &config) override {
     util::Status r;
 
-    QStringList boolOpts(
-        {kMergeFSOption, kNoMinimizeWritesOption, kSkipIdGenerationOption});
+    QStringList boolOpts({kMergeFSOption, kNoMinimizeWritesOption});
     for (const auto &opt : boolOpts) {
       auto s = setOption(opt, config.isSet(opt));
       if (!s.ok()) {
@@ -158,8 +140,8 @@ class FlasherImpl : public Flasher {
       }
     }
 
-    QStringList stringOpts({kIdDomainOption, kFlashParamsOption,
-                            kFlashingDataPortOption, kDumpFSOption});
+    QStringList stringOpts(
+        {kFlashParamsOption, kFlashingDataPortOption, kDumpFSOption});
     for (const auto &opt : stringOpts) {
       // XXX: currently there's no way to "unset" a string option.
       if (config.isSet(opt)) {
@@ -375,25 +357,6 @@ class FlasherImpl : public Flasher {
           tr("Setting flash params to 0x%1").arg(flashParams, 0, 16), true);
     }
 
-    bool id_generated = false;
-    if (generate_id_if_none_found_ && !blobs_.contains(idBlockOffset)) {
-      auto res = findIdLocked(&flasher_client);
-      if (res.ok()) {
-        if (!res.ValueOrDie()) {
-          emit statusMessage(tr("Generating new ID"), true);
-          blobs_[idBlockOffset] = makeIDBlock(id_hostname_);
-          id_generated = true;
-        } else {
-          emit statusMessage(tr("Existing ID found"), true);
-        }
-      } else {
-        emit statusMessage(tr("Failed to read existing ID block: %1")
-                               .arg(res.status().ToString().c_str()),
-                           true);
-        return QSP("failed to check for ID presence", st);
-      }
-    }
-
     qInfo() << QString("SPIFFS params: %1 @ 0x%2")
                    .arg(spiffs_size_)
                    .arg(spiffs_offset_, 0, 16)
@@ -411,13 +374,6 @@ class FlasherImpl : public Flasher {
         emit statusMessage(tr("Failed to merge flash content: %1")
                                .arg(res.status().ToString().c_str()),
                            true);
-        // Temporary: SPIFFS compatibility was broken between 0.3.3 and 0.3.4,
-        // overwrite FS for now.
-        if (!id_generated) {
-          return util::Status(
-              util::error::UNKNOWN,
-              tr("failed to merge flash filesystem").toStdString());
-        }
       }
     } else if (merge_flash_filesystem_) {
       qInfo() << "No SPIFFS image in new firmware";
@@ -588,30 +544,6 @@ class FlasherImpl : public Flasher {
     return merged;
   }
 
-  util::StatusOr<bool> findIdLocked(ESPFlasherClient *fc) {
-    // Block with ID has the following structure:
-    // 1) 20-byte SHA-1 hash of the payload
-    // 2) payload (JSON object)
-    // 3) 1-byte terminator ('\0')
-    // 4) padding with 0xFF bytes to the block size
-    auto res =
-        fc->read(idBlockOffset, idBlockSizeSectors * fc->kFlashSectorSize);
-    if (!res.ok()) {
-      return res.status();
-    }
-
-    QByteArray r = res.ValueOrDie();
-    const int SHA1Length = 20;
-    QByteArray hash = r.left(SHA1Length);
-    int terminator = r.indexOf('\0', SHA1Length);
-    if (terminator < 0) {
-      return false;
-    }
-    return hash ==
-           QCryptographicHash::hash(r.mid(SHA1Length, terminator - SHA1Length),
-                                    QCryptographicHash::Sha1);
-  }
-
   QMap<ulong, QByteArray> dedupImages(ESPFlasherClient *fc,
                                       QMap<ulong, QByteArray> images) {
     QMap<ulong, QByteArray> result;
@@ -707,8 +639,6 @@ class FlasherImpl : public Flasher {
   int progress_ = 0;
   qint32 override_flash_params_ = -1;
   bool merge_flash_filesystem_ = false;
-  bool generate_id_if_none_found_ = true;
-  QString id_hostname_;
   QString flashing_port_name_;
   int flashing_speed_ = kDefaultFlashBaudRate;
   bool minimize_writes_ = true;

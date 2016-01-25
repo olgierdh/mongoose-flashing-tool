@@ -37,18 +37,11 @@ int main(int argc, char *argv[]) {
       "Baud rate to use with the serial port used for flashing.", "number",
       "0"));
   commonOpts.append(QCommandLineOption(
-      Flasher::kIdDomainOption,
-      "Domain name to use for generated device IDs. Default: api.cesanta.com",
-      "name", "api.cesanta.com"));
-  commonOpts.append(QCommandLineOption(
       Flasher::kMergeFSOption,
       "If set, merge the device FS data with the factory image"));
   commonOpts.append(QCommandLineOption(
       Flasher::kDumpFSOption,
       "Dump file system image to a given file before merging.", "filename"));
-  commonOpts.append(
-      QCommandLineOption(Flasher::kSkipIdGenerationOption,
-                         "If set, device ID won't be generated and flashed."));
   commonOpts.append(QCommandLineOption(
       "console-log",
       "If set, bytes read from a serial port in console mode will be "
@@ -88,10 +81,6 @@ int main(int argc, char *argv[]) {
       QCommandLineOption("probe", "Check device presence on a given port."));
   cliOpts.append(QCommandLineOption(
       "flash", "Flash firmware from the given directory.", "dir"));
-  cliOpts.append(QCommandLineOption(
-      "generate-id",
-      "Generate a file with device ID in a format suitable for flashing.",
-      "filename"));
   cliOpts.append(QCommandLineOption(
       {"debug", "d"}, "Enable debug output. Equivalent to --V=4"));
 #if (QT_VERSION < QT_VERSION_CHECK(5, 4, 0))

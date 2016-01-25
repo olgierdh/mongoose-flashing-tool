@@ -331,21 +331,7 @@ class FlasherImpl : public Flasher {
   }
 
   util::Status setOption(const QString &name, const QVariant &value) override {
-    if (name == kIdDomainOption) {
-      if (value.type() != QVariant::String) {
-        return util::Status(util::error::INVALID_ARGUMENT,
-                            "value must be a string");
-      }
-      id_hostname_ = value.toString();
-      return util::Status::OK;
-    } else if (name == kSkipIdGenerationOption) {
-      if (value.type() != QVariant::Bool) {
-        return util::Status(util::error::INVALID_ARGUMENT,
-                            "value must be boolean");
-      }
-      skip_id_generation_ = value.toBool();
-      return util::Status::OK;
-    } else if (name == kMergeFSOption) {
+    if (name == kMergeFSOption) {
       if (value.type() != QVariant::Bool) {
         return util::Status(util::error::INVALID_ARGUMENT,
                             "value must be boolean");
@@ -377,8 +363,8 @@ class FlasherImpl : public Flasher {
   util::Status setOptionsFromConfig(const Config &config) override {
     util::Status r;
 
-    QStringList boolOpts({kSkipIdGenerationOption, kMergeFSOption});
-    QStringList stringOpts({kIdDomainOption, kFormatFailFS});
+    QStringList boolOpts({kMergeFSOption});
+    QStringList stringOpts({kFormatFailFS});
 
     for (const auto &opt : boolOpts) {
       auto s = setOption(opt, config.isSet(opt));
@@ -445,22 +431,6 @@ class FlasherImpl : public Flasher {
     st = uploadFW(image_, kFWFilename);
     if (!st.ok()) {
       return st;
-    }
-    if (!skip_id_generation_) {
-      emit statusMessage(tr("Checking if the device has an ID assigned..."),
-                         true);
-      auto info = getFileInfo(kDevConfFilename);
-      if (!info.ok()) {
-        return info.status();
-      }
-      if (!info.ValueOrDie().exists) {
-        emit statusMessage(tr("Generating a new ID..."), true);
-        QByteArray id = randomDeviceID(id_hostname_);
-        st = uploadFW(id, kDevConfFilename);
-        if (!st.ok()) {
-          return st;
-        }
-      }
     }
     if (spiffs_image_.length() > 0) {
       emit statusMessage(tr("Updating file system image..."), true);
@@ -951,8 +921,6 @@ class FlasherImpl : public Flasher {
   QByteArray spiffs_image_;
   QMap<QString, QByteArray> files_;
   QSerialPort *port_;
-  QString id_hostname_;
-  bool skip_id_generation_ = false;
   bool merge_spiffs_ = false;
   int failfs_size_ = -1;
   int progress_ = 0;

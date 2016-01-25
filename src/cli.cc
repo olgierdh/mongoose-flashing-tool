@@ -114,16 +114,6 @@ void CLI::run() {
       cerr << s << endl;
       exit_code = 1;
     }
-  } else if (parser_->isSet("generate-id")) {
-    util::Status s = generateID(parser_->value("generate-id"),
-                                config_->value(Flasher::kIdDomainOption));
-    if (s.ok()) {
-      cerr << "Success." << endl;
-      exit_code = 0;
-    } else {
-      cerr << s << endl;
-      exit_code = 1;
-    }
   } else {
     cerr << "No action specified. " << endl
          << endl;

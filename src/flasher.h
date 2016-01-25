@@ -43,8 +43,6 @@ class Flasher : public QObject {
   // non-OK status if there were any errors.
   virtual util::Status setOptionsFromConfig(const Config &config) = 0;
 
-  static const char kIdDomainOption[];
-  static const char kSkipIdGenerationOption[];
   static const char kMergeFSOption[];
   static const char kFlashBaudRateOption[];
   static const char kDumpFSOption[];

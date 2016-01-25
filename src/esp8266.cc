@@ -302,8 +302,8 @@ class FlasherImpl : public Flasher {
              "and retry now.\n\nError: %1")
               .arg(QString::fromUtf8(st.ToString().c_str()));
       int answer =
-          prompter_->Prompt(msg, {{tr("Retry"), QMessageBox::NoRole},
-                                  {tr("Cancel"), QMessageBox::YesRole}});
+          prompter_->Prompt(msg, {{tr("Retry"), Prompter::ButtonRole::No},
+                                  {tr("Cancel"), Prompter::ButtonRole::Yes}});
       if (answer == 1) {
         return util::Status(util::error::UNAVAILABLE,
                             "Failed to talk to bootloader.");
@@ -528,9 +528,9 @@ class FlasherImpl : public Flasher {
                     QString(merged.status().ToString().c_str()) +
                     tr("\nWhat should we do?");
       int answer =
-          prompter_->Prompt(msg, {{tr("Cancel"), QMessageBox::RejectRole},
-                                  {tr("Write new"), QMessageBox::YesRole},
-                                  {tr("Keep old"), QMessageBox::NoRole}});
+          prompter_->Prompt(msg, {{tr("Cancel"), Prompter::ButtonRole::Reject},
+                                  {tr("Write new"), Prompter::ButtonRole::Yes},
+                                  {tr("Keep old"), Prompter::ButtonRole::No}});
       qCritical() << msg << "->" << answer;
       switch (answer) {
         case 0:

@@ -82,7 +82,7 @@ class MainDialog : public QMainWindow {
   void logViewerClosed();
 
   void showPrompt(QString text,
-                  QList<QPair<QString, QMessageBox::ButtonRole>> buttons);
+                  QList<QPair<QString, Prompter::ButtonRole>> buttons);
 
   void showSettings();
   void updateConfig(const QString &name);

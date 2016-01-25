@@ -59,8 +59,7 @@ class PrompterImpl : public Prompter {
   virtual ~PrompterImpl() {
   }
 
-  int Prompt(QString text,
-             QList<QPair<QString, QMessageBox::ButtonRole>> buttons) override {
+  int Prompt(QString text, QList<QPair<QString, ButtonRole>> buttons) override {
     QMutexLocker l(&lock_);
     emit showPrompt(text, buttons);
     wc_.wait(&lock_);
@@ -68,8 +67,7 @@ class PrompterImpl : public Prompter {
   }
 
 signals:
-  void showPrompt(QString text,
-                  QList<QPair<QString, QMessageBox::ButtonRole>> buttons);
+  void showPrompt(QString text, QList<QPair<QString, ButtonRole>> buttons);
 
  public slots:
 
@@ -309,13 +307,25 @@ void MainDialog::resetHAL(QString name) {
 }
 
 void MainDialog::showPrompt(
-    QString text, QList<QPair<QString, QMessageBox::ButtonRole>> buttons) {
+    QString text, QList<QPair<QString, Prompter::ButtonRole>> buttons) {
   QMessageBox mb;
   mb.setText(text);
   QMap<QAbstractButton *, int> b2i;
   int i = 0;
   for (const auto &bd : buttons) {
-    QAbstractButton *b = mb.addButton(bd.first, bd.second);
+    QMessageBox::ButtonRole role = QMessageBox::YesRole;
+    switch (bd.second) {
+      case Prompter::ButtonRole::Yes:
+        role = QMessageBox::YesRole;
+        break;
+      case Prompter::ButtonRole::No:
+        role = QMessageBox::NoRole;
+        break;
+      case Prompter::ButtonRole::Reject:
+        role = QMessageBox::RejectRole;
+        break;
+    }
+    QAbstractButton *b = mb.addButton(bd.first, role);
     b2i[b] = i++;
   }
   mb.exec();

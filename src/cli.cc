@@ -15,6 +15,7 @@
 #include "cc3200.h"
 #include "config.h"
 #include "esp8266.h"
+#include "prompter.h"
 #include "serial.h"
 #include "status_qt.h"
 
@@ -33,8 +34,7 @@ class CLIPrompterImpl : public Prompter {
   virtual ~CLIPrompterImpl() {
   }
 
-  int Prompt(QString text,
-             QList<QPair<QString, QMessageBox::ButtonRole>> buttons) override {
+  int Prompt(QString text, QList<QPair<QString, ButtonRole>> buttons) override {
     cout << "Prompt: " << text.toStdString() << endl;
     cout << "CLI prompting not implemented, returning default ("
          << buttons[0].first.toStdString() << ")" << endl;

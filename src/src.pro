@@ -2,7 +2,7 @@ TEMPLATE = app
 !macx:TARGET = ../fnc
 macx:TARGET = "FNC"
 INCLUDEPATH += .
-QT += widgets serialport network
+QT += serialport network
 CONFIG += c++11
 
 CONFIG(asan) {
@@ -27,11 +27,12 @@ UTIL_PATH = $${COMMON_PATH}/util
 QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.9
 
 # Input
+
 HEADERS += \
+  app_init.h \
   cc3200.h \
   cli.h \
   config.h \
-  dialog.h \
   esp8266.h \
   esp_flasher_client.h \
   esp_rom_client.h \
@@ -39,19 +40,17 @@ HEADERS += \
   fs.h \
   fw_bundle.h \
   log.h \
-  log_viewer.h \
   prompter.h \
   serial.h \
-  settings.h \
   sigsource.h \
   slip.h \
   status_qt.h
 
 SOURCES += \
+  app_init.cc \
   cc3200.cc \
   cli.cc \
   config.cc \
-  dialog.cc \
   esp8266.cc \
   esp_flasher_client.cc \
   esp_rom_client.cc \
@@ -60,12 +59,18 @@ SOURCES += \
   fw_bundle.cc \
   fw_bundle_zip.cc \
   log.cc \
-  log_viewer.cc \
-  main.cc \
   serial.cc \
-  settings.cc \
   slip.cc \
   status_qt.cc
+
+CONFIG(cli) {
+  SOURCES += main_cli.cc
+  TARGET = $${TARGET}-cli
+} else { # GUI
+  QT += widgets
+  HEADERS += dialog.h log_viewer.h settings.h
+  SOURCES += dialog.cc log_viewer.cc main.cc settings.cc
+}
 
 DEFINES += VERSION=\\\"$$VERSION\\\"
 DEFINES += APP_NAME=\\\"$$TARGET\\\"
@@ -102,7 +107,7 @@ macx {
 } else:unix {
   # Works on recent Ubuntu: apt-get install libftdi-dev
   INCLUDEPATH += /usr/include
-  LIBS += -L/usr/lib/x86_64-linux-gnu -lftdi
+  LIBS += -lftdi
 }
 win32 {
  DEFINES += NO_LIBFTDI

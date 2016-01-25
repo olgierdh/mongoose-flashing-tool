@@ -116,3 +116,6 @@ win32 {
   QMAKE_TARGET_COMPANY = "Cesanta"
   RC_ICONS = smartjs.ico
 }
+
+!win32:QMAKE_CLEAN += -r $$TARGET
+win32:QMAKE_CLEAN += /s /f /q $$TARGET 

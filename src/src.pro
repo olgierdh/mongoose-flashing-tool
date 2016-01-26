@@ -73,6 +73,21 @@ CONFIG(cli) {
   SOURCES += dialog.cc log_viewer.cc main.cc settings.cc
 }
 
+CONFIG(static):CONFIG(unix) {
+  # One does not link entirely statically on UNIX/Linux.
+  # The resulting binary is semi-static - system libraries such as libstdc++
+  # and libpthread are still dynamically loaded, but for them, ABI backward
+  # compatibility is usually maintained pretty well.
+  # And then there is libudev, which is a special snowflake: systemd authors
+  # refuse to provide static version of it.
+  #
+  # To implement these tweaks, we have to rewrite the link command.
+  LIBS += -static
+  QMAKE_LINK = ./link-semi-static.py \
+    --force_dynamic="'-ldl -lm -lpthread -lrt -ludev'" \
+    -- $${QMAKE_LINK}
+}
+
 DEFINES += VERSION=\\\"$$VERSION\\\"
 DEFINES += APP_NAME=\\\"$$TARGET\\\"
 

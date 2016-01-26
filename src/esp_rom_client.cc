@@ -9,7 +9,9 @@
 #include "slip.h"
 #include "status_qt.h"
 
+#if (QT_VERSION < QT_VERSION_CHECK(5, 5, 0))
 #define qInfo qWarning
+#endif
 
 namespace {
 

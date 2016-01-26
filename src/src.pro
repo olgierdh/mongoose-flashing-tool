@@ -64,6 +64,7 @@ SOURCES += \
   status_qt.cc
 
 CONFIG(cli) {
+  QT -= gui
   SOURCES += main_cli.cc
   TARGET = $${TARGET}-cli
 } else { # GUI
@@ -107,7 +108,7 @@ macx {
 } else:unix {
   # Works on recent Ubuntu: apt-get install libftdi-dev
   INCLUDEPATH += /usr/include
-  LIBS += -lftdi
+  LIBS += -lftdi -lusb
 }
 win32 {
  DEFINES += NO_LIBFTDI

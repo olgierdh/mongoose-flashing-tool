@@ -1,6 +1,5 @@
 TEMPLATE = app
-!macx:TARGET = ../fnc
-macx:TARGET = "FNC"
+TARGET = "FNC"
 INCLUDEPATH += .
 QT += serialport network
 CONFIG += c++11

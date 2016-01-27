@@ -74,16 +74,20 @@ CONFIG(cli) {
 }
 
 CONFIG(static):CONFIG(unix) {
-  # One does not link entirely statically on UNIX/Linux.
+  LIBS += -static
+  !CONFIG(cli) {
+    # These are deps of the libraries and are needed to link the GUI binary.
+    EXTRA_STATIC_LIBS = -lexpat -lffi -lpcre -lXau -lxcb-util -lXdmcp -lXext
+  }
+  # One does not simply link statically on UNIX/Linux.
   # The resulting binary is semi-static - system libraries such as libstdc++
-  # and libpthread are still dynamically loaded, but for them, ABI backward
+  # and libpthread are still dynamically loaded, but for them ABI backward
   # compatibility is usually maintained pretty well.
   # And then there is libudev, which is a special snowflake: systemd authors
   # refuse to provide static version of it.
-  #
   # To implement these tweaks, we have to rewrite the link command.
-  LIBS += -static
   QMAKE_LINK = ./link-semi-static.py \
+    --append_static="'$${EXTRA_STATIC_LIBS}'" \
     --force_dynamic="'-ldl -lm -lpthread -lrt -ludev'" \
     -- $${QMAKE_LINK}
 }

@@ -1,3 +1,5 @@
+#include <unistd.h>
+
 #include <QCommandLineParser>
 #include <QCoreApplication>
 
@@ -14,6 +16,6 @@ int main(int argc, char *argv[]) {
   parser.process(app);
   config.fromCommandLine(parser);
   CLI cli(&config, &parser);
-
-  return app.exec();
+  _exit(app.exec());
+  return 1;
 }

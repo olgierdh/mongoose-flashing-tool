@@ -88,7 +88,7 @@ CONFIG(static):CONFIG(unix) {
   # To implement these tweaks, we have to rewrite the link command.
   QMAKE_LINK = ./link-semi-static.py \
     --append_static="'$${EXTRA_STATIC_LIBS}'" \
-    --force_dynamic="'-ldl -lm -lpthread -lrt -ludev'" \
+    --force_dynamic="'-ldl -lglib-2.0 -lgobject-2.0 -lgthread-2.0 -lm -lpthread -lrt -ludev'" \
     -- $${QMAKE_LINK}
 }
 

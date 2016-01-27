@@ -1,3 +1,5 @@
+#include <unistd.h>
+
 #include <QApplication>
 
 #include "app_init.h"
@@ -22,7 +24,7 @@ int main(int argc, char *argv[]) {
     QObject::connect(ss, &SigSource::flash, &w, &MainDialog::loadFirmware);
     QObject::connect(ss, &SigSource::connectDisconnect, &w,
                      &MainDialog::connectDisconnectTerminal);
-    return app.exec();
+    _exit(app.exec());
   }
 
   // Run in CLI mode.
@@ -30,6 +32,6 @@ int main(int argc, char *argv[]) {
   parser.process(app);
   config.fromCommandLine(parser);
   CLI cli(&config, &parser);
-
-  return app.exec();
+  _exit(app.exec());
+  return 1;
 }

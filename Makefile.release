@@ -55,7 +55,8 @@ $(BIN_DIR)/FNC.app: $(BIN_DIR)
 $(BIN_DIR)/FNC.exe: $(BIN_DIR)
 	docker run --rm -it -v $(REPO_ROOT):/src docker.cesanta.com:5000/build_base bash -lcx '\
 		cd /src/$(FNC_SUBDIR)/src && \
-		/src/common/tools/fw_meta.py gen_build_info --c_output=build_info.cc && \
+		/src/common/tools/fw_meta.py gen_build_info \
+			--tag_as_version=true --c_output=build_info.cc && \
 		wine qmake && \
 		nice wine mingw32-make -j 3 && \
 		mv -f release/FNC.exe ../$@ && \

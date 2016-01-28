@@ -18,7 +18,12 @@
 #include "sigsource.h"
 #include "status_qt.h"
 
+#if (QT_VERSION < QT_VERSION_CHECK(5, 5, 0))
+#define qInfo qWarning
+#endif
+
 // From build_info.cc (auto-generated).
+extern const char *build_id;
 extern const char *build_version;
 
 using std::cerr;
@@ -30,6 +35,7 @@ util::Status initApp(int *argc, char *argv[], Config *config,
   QCoreApplication::setOrganizationDomain("cesanta.com");
   QCoreApplication::setApplicationName(APP_NAME);
   QCoreApplication::setApplicationVersion(build_version);
+  qInfo() << APP_NAME << build_version << build_id;
 
   // QCommandLineOption supports C++11-style initialization only since Qt 5.4.
   QList<QCommandLineOption> commonOpts;

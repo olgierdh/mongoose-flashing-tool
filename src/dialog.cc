@@ -258,7 +258,8 @@ MainDialog::MainDialog(Config *config, QWidget *parent)
   connect(this, &MainDialog::showPromptResult, prompter_,
           &PrompterImpl::showPromptResult);
 
-  ui_.versionLabel->setText(tr("Build: %1").arg(build_id));
+  ui_.versionLabel->setText(
+      tr("Build: %1 %2").arg(qApp->applicationVersion()).arg(build_id));
 }
 
 void MainDialog::setState(State newState) {
@@ -741,6 +742,7 @@ void MainDialog::showAboutBox() {
   about.versionLabel->setText(
       tr("Version: %1").arg(qApp->applicationVersion()));
   about.buildLabel->setText(build_id);
+  about.buildLabel->setReadOnly(true);
   w->show();
 }
 

@@ -150,7 +150,8 @@ win32 {
   DUMMY_INPUT = .
   build_info.output = build_info.cc
   build_info.input = DUMMY_INPUT
-  build_info.commands = $${COMMON_PATH}/tools/fw_meta.py gen_build_info --c_output=${QMAKE_FILE_OUT}
+  build_info.commands = $${COMMON_PATH}/tools/fw_meta.py gen_build_info \
+    --tag_as_version=true --c_output=${QMAKE_FILE_OUT}
   build_info.name = build_info
   build_info.variable_out = DUMMY_OUTPUT
   build_info.CONFIG = no_link

@@ -46,12 +46,13 @@ $(BIN_DIR)/FNC.app: $(BIN_DIR)
 	make distclean
 
 $(BIN_DIR)/FNC.exe: $(BIN_DIR)
-	docker run --rm -it -v $(REPO_ROOT):/cesanta cesanta/build_base bash -lcx '\
+	docker run --rm -it -v $(REPO_ROOT):/cesanta docker.cesanta.com:5000/build_base bash -lcx '\
 		cd /cesanta/fnc/src && \
+		/cesanta/common/tools/fw_meta.py gen_build_info --c_output=build_info.cc && \
 		wine qmake && \
 		nice wine mingw32-make -j 3 && \
 		mv -f release/FNC.exe ../$@ && \
-		rm -rf release Makefile'
+		rm -rf release Makefile build_info.cc'
 
 $(BIN_DIR)/FNC-ubuntu%: $(BIN_DIR)
 	docker run --rm -it -v $(REPO_ROOT):/cesanta \

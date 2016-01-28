@@ -248,24 +248,18 @@
        </widget>
       </item>
       <item>
+       <widget class="QLabel" name="versionLabel">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item alignment="Qt::AlignRight">
        <widget class="QLabel" name="label">
         <property name="text">
          <string>© Cesanta, 2015</string>
         </property>
        </widget>
-      </item>
-      <item>
-       <spacer name="horizontalSpacer_2">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
       </item>
       <item>
        <widget class="QLabel" name="label_2">
@@ -338,7 +332,7 @@
   </action>
   <action name="actionLog">
    <property name="text">
-    <string>Log</string>
+    <string>&amp;Log</string>
    </property>
    <property name="menuRole">
     <enum>QAction::NoRole</enum>

@@ -18,6 +18,9 @@
 #include "sigsource.h"
 #include "status_qt.h"
 
+// From build_info.cc (auto-generated).
+extern const char *build_version;
+
 using std::cerr;
 using std::endl;
 
@@ -26,7 +29,7 @@ util::Status initApp(int argc, char *argv[], Config *config,
   QCoreApplication::setOrganizationName("Cesanta");
   QCoreApplication::setOrganizationDomain("cesanta.com");
   QCoreApplication::setApplicationName(APP_NAME);
-  QCoreApplication::setApplicationVersion(VERSION);
+  QCoreApplication::setApplicationVersion(build_version);
 
   // QCommandLineOption supports C++11-style initialization only since Qt 5.4.
   QList<QCommandLineOption> commonOpts;

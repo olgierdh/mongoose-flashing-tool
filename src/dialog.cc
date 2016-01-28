@@ -42,6 +42,9 @@
 #define qInfo qWarning
 #endif
 
+// From build_info.cc (auto-generated).
+extern const char *build_id;
+
 namespace {
 
 const int kInputHistoryLength = 1000;
@@ -254,6 +257,8 @@ MainDialog::MainDialog(Config *config, QWidget *parent)
   connect(prompter_, &PrompterImpl::showPrompt, this, &MainDialog::showPrompt);
   connect(this, &MainDialog::showPromptResult, prompter_,
           &PrompterImpl::showPromptResult);
+
+  ui_.versionLabel->setText(tr("Build: %1").arg(build_id));
 }
 
 void MainDialog::setState(State newState) {
@@ -735,6 +740,7 @@ void MainDialog::showAboutBox() {
   about.setupUi(w);
   about.versionLabel->setText(
       tr("Version: %1").arg(qApp->applicationVersion()));
+  about.buildLabel->setText(build_id);
   w->show();
 }
 

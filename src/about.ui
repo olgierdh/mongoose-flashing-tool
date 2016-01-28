@@ -17,7 +17,7 @@
    <item>
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
-      <widget class="QLabel" name="label_6">
+      <widget class="QLabel" name="logoLabel">
        <property name="text">
         <string/>
        </property>
@@ -43,7 +43,7 @@
       </spacer>
      </item>
      <item>
-      <widget class="QLabel" name="label_7">
+      <widget class="QLabel" name="bannerLabel">
        <property name="font">
         <font>
          <pointsize>26</pointsize>
@@ -58,7 +58,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QLabel" name="label_8">
+      <widget class="QLabel" name="nameLabel">
        <property name="text">
         <string>Smart.js flashing tool</string>
        </property>
@@ -74,6 +74,13 @@
        </property>
        <property name="alignment">
         <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="buildLabel">
+       <property name="text">
+        <string/>
        </property>
       </widget>
      </item>

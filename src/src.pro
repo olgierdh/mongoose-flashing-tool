@@ -47,6 +47,7 @@ HEADERS += \
 
 SOURCES += \
   app_init.cc \
+  build_info.cc \
   cc3200.cc \
   cli.cc \
   config.cc \
@@ -140,6 +141,20 @@ macx {
 win32 {
   QMAKE_TARGET_COMPANY = "Cesanta"
   RC_ICONS = smartjs.ico
+}
+
+# Build info generation.
+# It's too complicated to do under Wine, so we rely on build_info.cc to be
+# generated externally.
+!win32 {
+  DUMMY_INPUT = .
+  build_info.output = build_info.cc
+  build_info.input = DUMMY_INPUT
+  build_info.commands = $${COMMON_PATH}/tools/fw_meta.py gen_build_info --c_output=${QMAKE_FILE_OUT}
+  build_info.name = build_info
+  build_info.variable_out = DUMMY_OUTPUT
+  build_info.CONFIG = no_link
+  QMAKE_EXTRA_COMPILERS += build_info
 }
 
 !win32:QMAKE_CLEAN += -r $$TARGET

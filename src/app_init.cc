@@ -24,7 +24,7 @@ extern const char *build_version;
 using std::cerr;
 using std::endl;
 
-util::Status initApp(int argc, char *argv[], Config *config,
+util::Status initApp(int *argc, char *argv[], Config *config,
                      QCommandLineParser *parser) {
   QCoreApplication::setOrganizationName("Cesanta");
   QCoreApplication::setOrganizationDomain("cesanta.com");
@@ -99,18 +99,18 @@ util::Status initApp(int argc, char *argv[], Config *config,
   // Finder adds "-psn_*" argument whenever it shows the Gatekeeper prompt.
   // We can't just add it to the list of options since numbers in it are not
   // stable, so we just won't let QCommandLineParser know about that argument.
-  for (int i = 1; i < argc; i++) {
+  for (int i = 1; i < *argc; i++) {
     if (strncmp(argv[i], "-psn_", 5) == 0) {
-      for (int j = i + 1; j < argc; j++) {
+      for (int j = i + 1; j < *argc; j++) {
         argv[j - 1] = argv[j];
       }
-      argc--;
+      (*argc)--;
     }
   }
 #endif
 
   QStringList commandline;
-  for (int i = 0; i < argc; i++) {
+  for (int i = 0; i < *argc; i++) {
     commandline << QString(argv[i]);
   }
   // We ignore the return value here, since there might be some options handled

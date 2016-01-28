@@ -13,7 +13,7 @@
 #include "config.h"
 
 // Initialization bits common to GUI and CLI-only builds.
-util::Status initApp(int argc, char *argv[], Config *config,
+util::Status initApp(int *argc, char *argv[], Config *config,
                      QCommandLineParser *parser);
 
 #endif

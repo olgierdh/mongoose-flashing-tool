@@ -10,7 +10,7 @@
 int main(int argc, char *argv[]) {
   Config config;
   QCommandLineParser parser;
-  if (!initApp(argc, argv, &config, &parser).ok()) return 1;
+  if (!initApp(&argc, argv, &config, &parser).ok()) return 1;
 
   if (argc == 1 || parser.isSet("gui")) {
     // Run in GUI mode.

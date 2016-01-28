@@ -39,7 +39,7 @@ $(OUT_DIR)/FNC-ubuntu32.tar.xz: $(BIN_DIR)/FNC-ubuntu32
 $(OUT_DIR)/FNC-ubuntu64.tar.xz: $(BIN_DIR)/FNC-ubuntu64
 
 $(OUT_DIR)/FNC-%.zip:
-	cd $(BIN_DIR) && zip -m -r -9 -y ../$@ $(notdir $<)
+	cd $(BIN_DIR) && zip -r -9 -y ../$@ $(notdir $<)
 
 $(OUT_DIR)/FNC-%.tar.xz:
 	cd $(BIN_DIR) && tar cvJf ../$@ $(notdir $<)

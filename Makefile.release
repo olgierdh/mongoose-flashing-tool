@@ -15,7 +15,14 @@ else
 	SIGN_OPT =
 endif
 
+ifneq ($(wildcard common),)
+REPO_ROOT = $(shell realpath .)
+FNC_SUBDIR =
+else
 REPO_ROOT = $(shell realpath ..)
+FNC_SUBDIR = fnc
+endif
+
 BIN_DIR = ./bin
 OUT_DIR = ./out
 
@@ -46,18 +53,18 @@ $(BIN_DIR)/FNC.app: $(BIN_DIR)
 	make distclean
 
 $(BIN_DIR)/FNC.exe: $(BIN_DIR)
-	docker run --rm -it -v $(REPO_ROOT):/cesanta docker.cesanta.com:5000/build_base bash -lcx '\
-		cd /cesanta/fnc/src && \
-		/cesanta/common/tools/fw_meta.py gen_build_info --c_output=build_info.cc && \
+	docker run --rm -it -v $(REPO_ROOT):/src docker.cesanta.com:5000/build_base bash -lcx '\
+		cd /src/$(FNC_SUBDIR)/src && \
+		/src/common/tools/fw_meta.py gen_build_info --c_output=build_info.cc && \
 		wine qmake && \
 		nice wine mingw32-make -j 3 && \
 		mv -f release/FNC.exe ../$@ && \
 		rm -rf release Makefile build_info.cc'
 
 $(BIN_DIR)/FNC-ubuntu%: $(BIN_DIR)
-	docker run --rm -it -v $(REPO_ROOT):/cesanta \
+	docker run --rm -it -v $(REPO_ROOT):/src \
 		docker.cesanta.com:5000/build-ubuntu$*-qt5static:r1 bash -cx '\
-			cd /cesanta/fnc && \
+			cd /src/$(FNC_SUBDIR) && \
 			qmake -config static && \
 			nice make -j 3 && \
 			mv -f src/FNC $@ && \

@@ -66,3 +66,15 @@ Build with:
 ```
 $ QT_SELECT=5 qmake && make -j 3
 ```
+
+### Release building
+
+```
+$ make -f Makefile.release ubuntu32 ubuntu64 win
+```
+
+And, on a Mac machine:
+
+```
+$ make -f Makefile.release mac
+```

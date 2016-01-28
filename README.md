@@ -3,30 +3,55 @@
 Flashnchips is the Smart.js flashing tool. It is designed to be simple, but
 provide advanced options via command-line flags.
 
+## EP8266
+
+Flashing ESP8266 repeatedly is easier with additional wiring.
+
+See [here](https://github.com/cesanta/smart.js/blob/master/smartjs/platforms/esp8266/flashing.md)
+for more details.
+
 ## Firmware format
 
-Flashnchips expects the firmware to be located next to the executable in a
-directory called 'firmware'. This directory must contain a subdirectory named
-after the platform (e.g. 'esp8266'), that should contain one subdirectory for
-each firmware. For example:
+Flashnchips expects firmware bundles as ZIP files.
+ZIP archive must contain a file called `manifest.json`, which descibes firmware
+contents.
 
+Example (ESP8266):
+
+```json
+{
+  "name": "smartjs",
+  "platform": "esp8266",
+  "version": "20160128095944",
+  "build_id": "20160128-095944/fnc@043a9d7e.",
+  "build_timestamp": "2016-01-28T09:59:44.439407",
+  "parts": {
+    "boot": {
+      "addr": "0x0",
+      "cs_sha1": "f975bb12df29c332bb7f44c7c6b842038da0f066",
+      "src": "0x00000.bin"
+    },
+    "boot_cfg": {
+      "addr": "0x1000",
+      "cs_sha1": "e0c66649d1434eca3435033a32634cb90cef0f31",
+      "src": "0x01000.bin"
+    },
+    "fs": {
+      "addr": "0xe0000",
+      "cs_sha1": "5216007432ee228dba8f3e300117d15953b21226",
+      "src": "0xe0000.bin"
+    },
+    "fw": {
+      "addr": "0x11000",
+      "cs_sha1": "4d60976cc0953388a15c1ac597b0bab39b6d1404",
+      "src": "0x11000.bin"
+    }
+  }
+}
 ```
-flashnchips.exe
-firmware/
-└── esp8266
-    └── Smart.js
-        ├── 0x00000.bin
-        ├── 0x1d000.bin
-        └── 0x6d000.bin
-```
 
-### ESP8266
-
-For ESP8266 firmware consists of one or more files with named `0x*.bin`. File
-name is interpreted as a hexadecimal number which is used as an offset on flash
-where the content of the file needs to be written.
-
-See also [ESP8266-specific](../platforms/esp8266/flashing.md) notes on wiring.
+A [script](https://github.com/cesanta/fnc/blob/master/common/tools/fw_meta.py)
+can be used to generate the manifest.
 
 ## Build
 
@@ -34,6 +59,7 @@ Flashnchips requires:
 
 - Qt 5
 - libftdi
+- Python with GitPython module
 
 Build with:
 

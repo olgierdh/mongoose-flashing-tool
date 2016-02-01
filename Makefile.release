@@ -5,15 +5,21 @@
 # Dependencies:
 # 1) docker installed and functional
 # 2) mac: Qt 5 installed and directory with its binaries present in the PATH
-# 3) mac: to sign the bundle import secure.cesanta.com:certs/code_sign/* into a
-#    separate password-protected keychain
 
-SIGN ?= 0
-ifeq ($(SIGN), 1)
-	SIGN_OPT="-codesign=Cesanta Software Limited"
-else
-	SIGN_OPT =
-endif
+# Builds signed Windows and Mac binaries by default. Set to "" to disable.
+SIGN = "Cesanta Software Limited"
+# Certificate and key are located on secure under the code_sign directory.
+# For the Mac build, you should have code.keychain added to the system (use the
+# Keychain Access utility). Do not unlock it and do not keep it unlocked,
+# you will be asked for the passphrase in due time when signing.
+# This also means you have to run build from the GUI terminal (otherwise you'll
+# get "user interaction disabled" error).
+#
+# For the Windows build, you must have the certificate and the (encrypted)
+# key files named below in the current directory. Take them from secure.
+# You will be asked for the passphrase, so make sure you have that handy too.
+SIGN_CERT = code.crt.pem
+SIGN_KEY  = code.key.enc.pem
 
 ifneq ($(wildcard common),)
 REPO_ROOT = $(shell realpath .)
@@ -48,28 +54,55 @@ $(BIN_DIR) $(OUT_DIR):
 	mkdir -p $@
 
 $(BIN_DIR)/FNC.app: $(BIN_DIR)
-	qmake && nice make -j 3 && cd src && macdeployqt FNC.app $(SIGN_OPT)
+	qmake
+	nice make -j $(shell sysctl -n hw.ncpu)
+	if [ z$(SIGN) != z ]; then \
+	  macdeployqt src/FNC.app -codesign=$(SIGN); \
+	  codesign --verify --verbose src/FNC.app; \
+	else \
+	  macdeployqt src/FNC.app; \
+	fi
 	mv -f src/FNC.app $@
 	make distclean
 
 $(BIN_DIR)/FNC.exe: $(BIN_DIR)
 	docker run --rm -it -v $(REPO_ROOT):/src docker.cesanta.com:5000/build_base bash -lcx '\
-		cd /src/$(FNC_SUBDIR)/src && \
-		/src/common/tools/fw_meta.py gen_build_info \
-			--tag_as_version=true --c_output=build_info.cc && \
-		wine qmake && \
-		nice wine mingw32-make -j 3 && \
-		mv -f release/FNC.exe ../$@ && \
-		rm -rf release Makefile build_info.cc'
+	  cd /src/$(FNC_SUBDIR)/src && \
+	  /src/common/tools/fw_meta.py gen_build_info \
+	    --tag_as_version=true --c_output=build_info.cc && \
+	  wine qmake && \
+	  nice wine mingw32-make -j 3 && \
+	  cd .. && \
+	  if [ z$(SIGN) != z ]; then \
+	    osslsigncode sign \
+	      -certs $(SIGN_CERT) -key $(SIGN_KEY) -h sha256 \
+	      -n "Flashnchips, the Smart.js flashing tool" \
+	      -i https://www.cesanta.com/ \
+	      -ts http://tsa.startssl.com/rfc3161 \
+	      -in src/release/FNC.exe -out $@; \
+	  else \
+	    mv -f src/release/FNC.exe $@; \
+	  fi; \
+	  rm -rf src/release src/Makefile src/build_info.cc'
+
+ifneq ($(SIGN),)
+$(BIN_DIR)/FNC.exe: $(SIGN_CERT) $(SIGN_KEY)
+endif
+
+$(SIGN_CERT) $(SIGN_KEY):
+	@echo
+	@echo $(@) not found. Please copy it manually from secure.
+	@echo
+	@exit 1
 
 $(BIN_DIR)/FNC-ubuntu%: $(BIN_DIR)
 	docker run --rm -it -v $(REPO_ROOT):/src \
-		docker.cesanta.com:5000/build-ubuntu$*-qt5static:r1 bash -cx '\
-			cd /src/$(FNC_SUBDIR) && \
-			qmake -config static && \
-			nice make -j 3 && \
-			mv -f src/FNC $@ && \
-			make distclean'
+	  docker.cesanta.com:5000/build-ubuntu$*-qt5static:r1 bash -cx '\
+	    cd /src/$(FNC_SUBDIR) && \
+	    qmake -config static && \
+	    nice make -j 3 && \
+	    mv -f src/FNC $@ && \
+	    make distclean'
 
 clean:
 	rm -rf $(BIN_DIR) $(OUT_DIR) Makefile src/Makefile*

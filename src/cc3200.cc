@@ -50,7 +50,6 @@ const int kStorageID = 0;
 const char kFWFilename[] = "/sys/mcuimg.bin";
 const char kFWBundleFWPartName[] = "sys_mcuimg.bin";
 const char kFWBundleFSPartName[] = "fs.img";
-const char kDevConfFilename[] = "/conf/dev.json";
 const char kFS0Filename[] = "0.fs";
 const char kFS1Filename[] = "1.fs";
 const int kBlockSizes[] = {0x100, 0x400, 0x1000, 0x4000, 0x10000};

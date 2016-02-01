@@ -35,7 +35,6 @@ util::Status initApp(int *argc, char *argv[], Config *config,
   QCoreApplication::setOrganizationDomain("cesanta.com");
   QCoreApplication::setApplicationName(APP_NAME);
   QCoreApplication::setApplicationVersion(build_version);
-  qInfo() << APP_NAME << build_version << build_id;
 
   // QCommandLineOption supports C++11-style initialization only since Qt 5.4.
   QList<QCommandLineOption> commonOpts;
@@ -127,6 +126,7 @@ util::Status initApp(int *argc, char *argv[], Config *config,
   // options.
   parser->parse(commandline);
 
+  Log::init();
   if (parser->isSet("log")) {
     auto *logfile = new std::ofstream(parser->value("log").toStdString(),
                                       std::ios_base::app);
@@ -134,14 +134,11 @@ util::Status initApp(int *argc, char *argv[], Config *config,
       cerr << "Failed to open log file." << endl;
       return QS(util::error::UNAVAILABLE, "Failed to open log file");
     }
-    *logfile << "\n---------- Log started on "
-             << QDateTime::currentDateTime().toString(Qt::ISODate).toStdString()
-             << endl;
+    *logfile << "\n";
     Log::setFile(logfile);
   } else {
     Log::setFile(&cerr);
   }
-  Log::init();
   if (parser->isSet("debug")) {
     Log::setVerbosity(4);
   } else if (parser->isSet("V")) {
@@ -154,6 +151,12 @@ util::Status initApp(int *argc, char *argv[], Config *config,
                 QObject::tr("'%1' is not a number").arg(parser->value("V")));
     }
   }
+  qInfo() << "---------- Log started on "
+          << QDateTime::currentDateTime()
+                 .toString(Qt::ISODate)
+                 .toStdString()
+                 .c_str();
+  qInfo() << APP_NAME << "Version" << build_version << "Build" << build_id;
 
   return util::Status::OK;
 }

@@ -55,19 +55,63 @@ can be used to generate the manifest.
 
 ## Build
 
+### Building
+
 Flashnchips requires:
 
 - Qt 5
 - libftdi
 - Python with GitPython module
 
-Build with:
+Install the dependencies (Debian/Ubuntu):
+
+```
+$ sudo apt-get install build-essential qt5-qmake libqt5serialport5-dev libftdi-dev git python-git
+```
+
+Build a GUI version with:
 
 ```
 $ QT_SELECT=5 qmake && make -j 3
 ```
 
-### Release building
+Or build a CLI-only version with:
+
+```
+$ QT_SELECT=5 qmake -config cli && make -j 3
+```
+
+### Building static binaries
+
+Before building F&C, you'll need to build static Qt libraries from source.
+
+Install the dependencies and build Qt (Debian/Ubuntu):
+
+```
+$ sudo apt-get install build-essential git python-git wget libglib2.0-dev libudev-dev libftdi-dev libfontconfig1-dev libjpeg-dev libssl-dev libicu-dev libjpeg-dev
+$ wget -c http://download.qt.io/official_releases/qt/5.5/5.5.1/single/qt-everywhere-opensource-src-5.5.1.tar.gz
+$ tar xzf qt-everywhere-opensource-src-5.5.1.tar.gz
+$ cd qt-everywhere-opensource-src-5.5.1
+$ ./configure -make 'libs tools' -static -prefix /opt/qt5 -opensource -confirm-license -skip qt3d -skip qtcanvas3d -skip qtdoc -skip qtlocation -skip qtscript -skip qtmultimedia -skip qtsensors -skip qtwebengine -skip qtwebkit -skip qtwebkit-examples
+$ nice make -j4
+$ nice make -j4 install
+```
+Note: if you're only going to build CLI version, you can add `-no-gui` to Qt's `configure` line which will save quite a bit of time building.
+
+Then build F&C Qt:
+
+```
+$ export PATH="$PATH:/opt/qt5/bin"
+$ qmake && make -j 3
+```
+
+### Building a release
+
+(Mostly of interest to Cesanta)
+
+There is a special makefile and accompanying Docker images for building release binaries.
+To build release binaries, you do not need to install any dependencies, they are all provided in the Docker images.
+For Mac and Windows binaries you will need to get the code signing certificate.
 
 ```
 $ make -f Makefile.release ubuntu32 ubuntu64 win

@@ -69,7 +69,7 @@ util::StatusOr<QByteArray> recv(QSerialPort *port, int timeoutMs) {
     switch ((unsigned char) c) {
       case SLIPFrameDelimiter:
         // End of frame.
-        qDebug() << "<=" << ret.toHex();
+        qDebug() << prefix << "<=" << ret.toHex();
         return ret;
       case SLIPEscape:
         if (port->bytesAvailable() == 0 && !port->waitForReadyRead(timeoutMs)) {

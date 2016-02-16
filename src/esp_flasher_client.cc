@@ -312,8 +312,9 @@ util::StatusOr<quint32> ESPFlasherClient::getFlashChipID() {
   QDataStream s(respBytes);
   s.setByteOrder(QDataStream::BigEndian);  // BigEndian to preserve byte order.
   s >> chipID;
-  if (chipID == 0)
-    return QS(util::error::INTERNAL, prefix + "failed to get chip id");
+  if (chipID == 0) {
+    return QS(util::error::INTERNAL, prefix + "0 is not a valid chip ID");
+  }
   res = SLIP::recv(rom_->data_port());
   if (!res.ok()) return QSP(prefix + "failed to read status", res.status());
   return chipID;

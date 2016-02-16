@@ -70,7 +70,8 @@ class PrompterImpl : public Prompter {
   }
 
 signals:
-  void showPrompt(QString text, QList<QPair<QString, ButtonRole>> buttons);
+  void showPrompt(QString text,
+                  QList<QPair<QString, Prompter::ButtonRole>> buttons);
 
  public slots:
 

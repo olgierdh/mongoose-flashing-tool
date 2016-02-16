@@ -53,7 +53,7 @@ util::Status ESPROMClient::connect() {
     QThread::msleep(10);
     control_port_->setDataTerminalReady(true ^ inverted_);
     control_port_->setRequestToSend(false ^ inverted_);
-    QThread::msleep(50);
+    QThread::msleep(250);
     control_port_->setDataTerminalReady(false ^ inverted_);
     control_port_->setRequestToSend(false ^ inverted_);
     r = sync();

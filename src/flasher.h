@@ -9,8 +9,9 @@
 #include <QObject>
 #include <QSerialPort>
 #include <QString>
+#include <QVariant>
 
-#include <common/util/status.h>
+#include <common/util/statusor.h>
 
 #include "fw_bundle.h"
 
@@ -59,5 +60,6 @@ signals:
 };
 
 QByteArray randomDeviceID(const QString &domain);
+util::StatusOr<quint32> parseSize(const QVariant &value);
 
 #endif  // FLASHER_H

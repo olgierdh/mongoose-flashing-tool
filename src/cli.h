@@ -28,12 +28,12 @@ class CLI : public QObject {
  private:
   void listPorts();
   util::Status probePort(const QString &portname);
-  util::Status flash(const QString &portname, const QString &path, int speed);
+  util::Status flash(const QString &portname, const QString &path);
   util::Status generateID(const QString &filename, const QString &domain);
   void run();
 
-  Config *config_ = nullptr;
-  QCommandLineParser *parser_ = nullptr;
+  Config *config_;
+  QCommandLineParser *parser_;
   std::unique_ptr<HAL> hal_;
   Prompter *prompter_;
 };

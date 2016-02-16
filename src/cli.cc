@@ -6,6 +6,7 @@
 #include <QCommandLineParser>
 #include <QCoreApplication>
 #include <QFile>
+#include <QFileInfo>
 #include <QTimer>
 #include <QSerialPort>
 #include <QSerialPortInfo>
@@ -71,27 +72,30 @@ void CLI::run() {
   }
 
   int exit_code = 0;
-  int speed = 230400;
 
-  if (config_->isSet("flash-baud-rate")) {
-    speed = config_->value("flash-baud-rate").toInt();
-    if (speed == 0) {
-      cerr << "Baud rate must be a number." << endl
-           << endl;
-      parser_->showHelp(1);
+  QString port;
+  if (parser_->isSet("port")) {
+    port = parser_->value("port");
+#ifdef __unix__
+    // Resolve symlinks if any.
+    QFileInfo qf(port);
+    if (!qf.canonicalFilePath().isEmpty() && qf.canonicalFilePath() != port) {
+      qInfo() << port << "->" << qf.canonicalFilePath();
+      port = qf.canonicalFilePath();
     }
+#endif
   }
 
   if (parser_->isSet("probe-ports")) {
     listPorts();
     exit_code = 0;
   } else if (parser_->isSet("probe")) {
-    if (!parser_->isSet("port")) {
+    if (port.isEmpty()) {
       cerr << "Need --port" << endl
            << endl;
       parser_->showHelp(1);
     }
-    util::Status r = probePort(parser_->value("port"));
+    util::Status r = probePort(port);
     if (!r.ok()) {
       cerr << r << endl;
       exit_code = 1;
@@ -100,13 +104,12 @@ void CLI::run() {
       exit_code = 0;
     }
   } else if (parser_->isSet("flash")) {
-    if (!parser_->isSet("port")) {
+    if (port.isEmpty()) {
       cerr << "Need --port" << endl
            << endl;
       parser_->showHelp(1);
     }
-    util::Status s =
-        flash(parser_->value("port"), parser_->value("flash"), speed);
+    util::Status s = flash(port, parser_->value("flash"));
     if (s.ok()) {
       cerr << "Success." << endl;
       exit_code = 0;
@@ -150,11 +153,10 @@ util::Status CLI::probePort(const QString &portname) {
     }
     return hal_->probe(port);
   }
-  return util::Status(util::error::FAILED_PRECONDITION, "No such port");
+  return util::Status(util::error::INVALID_ARGUMENT, "No such port");
 }
 
-util::Status CLI::flash(const QString &portname, const QString &path,
-                        int speed) {
+util::Status CLI::flash(const QString &portname, const QString &path) {
   if (hal_ == nullptr) {
     return util::Status(util::error::INVALID_ARGUMENT, "No platform selected");
   }
@@ -170,7 +172,7 @@ util::Status CLI::flash(const QString &portname, const QString &path,
     break;
   }
   if (!found) {
-    return util::Status(util::error::FAILED_PRECONDITION, "No such port");
+    return util::Status(util::error::INVALID_ARGUMENT, "No such port");
   }
 
   std::unique_ptr<Flasher> f(hal_->flasher(prompter_));
@@ -194,7 +196,7 @@ util::Status CLI::flash(const QString &portname, const QString &path,
   qInfo() << "Flashing" << fwb->name() << fwb->platform().toUpper()
           << fwb->buildId();
 
-  util::StatusOr<QSerialPort *> r = connectSerial(info, speed);
+  util::StatusOr<QSerialPort *> r = connectSerial(info, 115200);
   if (!r.ok()) {
     return r.status();
   }

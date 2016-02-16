@@ -38,6 +38,7 @@ namespace ESP8266 {
 namespace {
 
 const char kFlashParamsOption[] = "esp8266-flash-params";
+const char kFlashSizeOption[] = "esp8266-flash-size";
 const char kFlashingDataPortOption[] = "esp8266-flashing-data-port";
 const char kSPIFFSOffsetOption[] = "esp8266-spiffs-offset";
 const char kDefaultSPIFFSOffset[] = "0xec000";
@@ -56,7 +57,11 @@ class FlasherImpl : public Flasher {
   }
 
   util::Status setOption(const QString &name, const QVariant &value) override {
-    if (name == kMergeFSOption) {
+    if (name == kFlashSizeOption) {
+      auto res = parseSize(value);
+      if (res.ok()) flashSize_ = res.ValueOrDie();
+      return res.status();
+    } else if (name == kMergeFSOption) {
       if (value.type() != QVariant::Bool) {
         return util::Status(util::error::INVALID_ARGUMENT,
                             "value must be boolean");
@@ -140,8 +145,8 @@ class FlasherImpl : public Flasher {
       }
     }
 
-    QStringList stringOpts(
-        {kFlashParamsOption, kFlashingDataPortOption, kDumpFSOption});
+    QStringList stringOpts({kFlashSizeOption, kFlashParamsOption,
+                            kFlashingDataPortOption, kDumpFSOption});
     for (const auto &opt : stringOpts) {
       // XXX: currently there's no way to "unset" a string option.
       if (config.isSet(opt)) {
@@ -319,23 +324,31 @@ class FlasherImpl : public Flasher {
       return QSP("Failed to run and communicate with flasher stub", st);
     }
 
-    auto flashChipIDRes = flasher_client.getFlashChipID();
-    quint32 flashSize = 524288;  // A safe default.
-    if (flashChipIDRes.ok()) {
-      quint32 mfg = (flashChipIDRes.ValueOrDie() & 0xff000000) >> 24;
-      quint32 type = (flashChipIDRes.ValueOrDie() & 0x00ff0000) >> 16;
-      quint32 capacity = (flashChipIDRes.ValueOrDie() & 0x0000ff00) >> 8;
-      qInfo() << "Flash chip ID:" << hex << showbase << mfg << type << capacity;
-      if (mfg != 0 && capacity >= 0x13 && capacity < 0x20) {
-        // Capacity is the power of two.
-        flashSize = 1 << capacity;
+    if (flashSize_ == 0) {
+      qInfo() << "Detecting flash size...";
+      auto flashChipIDRes = flasher_client.getFlashChipID();
+      if (flashChipIDRes.ok()) {
+        quint32 mfg = (flashChipIDRes.ValueOrDie() & 0xff000000) >> 24;
+        quint32 type = (flashChipIDRes.ValueOrDie() & 0x00ff0000) >> 16;
+        quint32 capacity = (flashChipIDRes.ValueOrDie() & 0x0000ff00) >> 8;
+        qInfo() << "Flash chip ID:" << hex << showbase << mfg << type
+                << capacity;
+        if (mfg != 0 && capacity >= 0x13 && capacity < 0x20) {
+          // Capacity is the power of two.
+          flashSize_ = 1 << capacity;
+        }
       }
-    } else {
-      qCritical() << "Failed to get flash chip id:" << flashChipIDRes.status();
+      if (flashSize_ == 0) {
+        qWarning()
+            << "Failed to detect flash size:" << flashChipIDRes.status()
+            << ", defaulting 512K. You may want to specify size explicitly "
+               "using --flash-size.";
+        flashSize_ = 512 * 1024;  // A safe default.
+      }
     }
-    qInfo() << "Flash size:" << flashSize;
+    qInfo() << "Flash size:" << flashSize_;
 
-    st = sanityCheckImages(blobs_, flashSize, flasher_client.kFlashSectorSize);
+    st = sanityCheckImages(blobs_, flashSize_, flasher_client.kFlashSectorSize);
     if (!st.ok()) return st;
 
     if (blobs_.contains(0) && blobs_[0].length() >= 4) {
@@ -344,12 +357,12 @@ class FlasherImpl : public Flasher {
         flashParams = override_flash_params_;
       } else {
         // We don't have constants for larger flash sizes.
-        if (flashSize > 4194304) flashSize = 4194304;
+        if (flashSize_ > 4194304) flashSize_ = 4194304;
         // We use detected size + DIO @ 40MHz which should be a safe default.
         // Advanced users wishing to use other modes and freqs can override.
         flashParams =
             flashParamsFromString(
-                tr("dio,%1m,40m").arg(flashSize * 8 / 1048576)).ValueOrDie();
+                tr("dio,%1m,40m").arg(flashSize_ * 8 / 1048576)).ValueOrDie();
       }
       blobs_[0][2] = (flashParams >> 8) & 0xff;
       blobs_[0][3] = flashParams & 0xff;
@@ -423,6 +436,8 @@ class FlasherImpl : public Flasher {
 
     st = verifyImages(&flasher_client, blobs_);
     if (!st.ok()) return QSP("verification failed", st);
+
+    emit statusMessage(tr("Flashing successful, rebooting..."), true);
 
     // Ideally, we'd like to tell flasher stub to boot the firmware here,
     // but for some reason jumping to ResetVector returns to the loader.
@@ -637,6 +652,7 @@ class FlasherImpl : public Flasher {
   QSerialPort *port_;
   std::unique_ptr<ESPROMClient> rom_;
   int progress_ = 0;
+  quint32 flashSize_ = 0;
   qint32 override_flash_params_ = -1;
   bool merge_flash_filesystem_ = false;
   QString flashing_port_name_;
@@ -760,6 +776,12 @@ util::StatusOr<int> flashParamsFromString(const QString &s) {
 void addOptions(Config *config) {
   // QCommandLineOption supports C++11-style initialization only since Qt 5.4.
   QList<QCommandLineOption> opts;
+  opts.append(QCommandLineOption(
+      kFlashSizeOption,
+      "Size of the flash chip. If not specified, will auto-detect. Size can be "
+      "specified as an integer number of bytes and larger units of {k,m}bits or"
+      " {K,M}bytes. 1M = 1024K = 8m = 8192k = 1048576 bytes.",
+      "<size>[KkMm]"));
   opts.append(QCommandLineOption(
       kFlashParamsOption,
       "Override params bytes read from existing firmware. Either a "

@@ -249,7 +249,7 @@ class FlasherImpl : public Flasher {
             util::error::NOT_FOUND,
             tr("Port %1 not found").arg(flashing_port_name_).toStdString());
       }
-      auto serial = connectSerial(info, flashing_speed_);
+      auto serial = connectSerial(info, 115200);
       if (!serial.ok()) {
         return util::Status(
             util::error::UNKNOWN,

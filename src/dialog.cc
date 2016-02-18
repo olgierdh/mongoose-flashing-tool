@@ -419,14 +419,15 @@ void MainDialog::connectDisconnectTerminal() {
       }
     // fallthrough
     case Connected:
-      if (config_->isSet("console-log") &&
-          (console_log_ == nullptr ||
-           console_log_->fileName() != config_->value("console-log"))) {
-        console_log_.reset(new QFile(config_->value("console-log")));
-        if (!console_log_->open(QIODevice::ReadWrite | QIODevice::Append)) {
-          qCritical() << "Failed to open console log file:"
-                      << console_log_->errorString();
-          console_log_->reset();
+      if (config_->isSet("console-log")) {
+        if (console_log_ == nullptr ||
+            console_log_->fileName() != config_->value("console-log")) {
+          console_log_.reset(new QFile(config_->value("console-log")));
+          if (!console_log_->open(QIODevice::ReadWrite | QIODevice::Append)) {
+            qCritical() << "Failed to open console log file:"
+                        << console_log_->errorString();
+            console_log_->reset();
+          }
         }
       } else {
         console_log_.reset();
@@ -641,6 +642,10 @@ void MainDialog::flashingDone(QString msg, bool success) {
 }
 
 void MainDialog::loadFirmware() {
+  // Check if the terminal is scrolled down to the bottom before showing
+  // progress bar, so we can scroll it back again after we're done.
+  auto *scroll = ui_.terminal->verticalScrollBar();
+  scroll_after_flashing_ = scroll->value() == scroll->maximum();
   if (hal_ == nullptr) {
     qFatal("No HAL instance");
   }
@@ -691,10 +696,6 @@ void MainDialog::loadFirmware() {
     return;
   }
 
-  // Check if the terminal is scrolled down to the bottom before showing
-  // progress bar, so we can scroll it back again after we're done.
-  auto *scroll = ui_.terminal->verticalScrollBar();
-  scroll_after_flashing_ = scroll->value() == scroll->maximum();
   ui_.progressBar->show();
   ui_.statusMessage->show();
   ui_.progressBar->setRange(0, f->totalBytes());

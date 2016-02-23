@@ -91,6 +91,7 @@ class MainDialog : public QMainWindow {
 
   void showSettings();
   void updateConfig(const QString &name);
+  void truncateConsoleLog();
 
 signals:
   void gotPrompt();
@@ -101,6 +102,7 @@ signals:
 
  private:
   std::unique_ptr<FirmwareBundle> loadFirmwareBundle(const QString &fileName);
+  void openConsoleLogFile(bool truncate);
 
   Config *config_ = nullptr;
   bool skip_detect_warning_ = false;

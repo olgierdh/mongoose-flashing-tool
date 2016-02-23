@@ -206,6 +206,8 @@ MainDialog::MainDialog(Config *config, QWidget *parent)
           &MainDialog::configureWiFi);
   connect(ui_.actionUpload_a_file, &QAction::triggered, this,
           &MainDialog::uploadFile);
+  connect(ui_.actionTruncate_log_file, &QAction::triggered, this,
+          &MainDialog::truncateConsoleLog);
 
   connect(ui_.uploadBtn, &QPushButton::clicked, this, &MainDialog::uploadFile);
 
@@ -261,6 +263,8 @@ MainDialog::MainDialog(Config *config, QWidget *parent)
 
   ui_.versionLabel->setText(
       tr("Build: %1 %2").arg(qApp->applicationVersion()).arg(build_id));
+
+  openConsoleLogFile(false /* truncate */);
 }
 
 void MainDialog::setState(State newState) {
@@ -419,19 +423,7 @@ void MainDialog::connectDisconnectTerminal() {
       }
     // fallthrough
     case Connected:
-      if (config_->isSet("console-log")) {
-        if (console_log_ == nullptr ||
-            console_log_->fileName() != config_->value("console-log")) {
-          console_log_.reset(new QFile(config_->value("console-log")));
-          if (!console_log_->open(QIODevice::ReadWrite | QIODevice::Append)) {
-            qCritical() << "Failed to open console log file:"
-                        << console_log_->errorString();
-            console_log_->reset();
-          }
-        }
-      } else {
-        console_log_.reset();
-      }
+      openConsoleLogFile(false /* truncate */);
       connect(serial_port_.get(), &QIODevice::readyRead, this,
               &MainDialog::readSerial);
 
@@ -915,6 +907,31 @@ std::unique_ptr<FirmwareBundle> MainDialog::loadFirmwareBundle(
       QString("selectedFirmware_%1").arg(ui_.platformSelector->currentText()),
       fileName);
   return std::move(fwb);
+}
+
+void MainDialog::openConsoleLogFile(bool truncate) {
+  if (truncate) console_log_.reset();
+  if (config_->isSet("console-log")) {
+    ui_.actionTruncate_log_file->setEnabled(true);
+    if (console_log_ == nullptr ||
+        console_log_->fileName() != config_->value("console-log")) {
+      console_log_.reset(new QFile(config_->value("console-log")));
+      if (!console_log_->open(
+              QIODevice::ReadWrite |
+              (truncate ? QIODevice::Truncate : QIODevice::Append))) {
+        qCritical() << "Failed to open console log file:"
+                    << console_log_->errorString();
+        console_log_->reset();
+      }
+    }
+  } else {
+    ui_.actionTruncate_log_file->setEnabled(false);
+    console_log_.reset();
+  }
+}
+
+void MainDialog::truncateConsoleLog() {
+  openConsoleLogFile(true /* truncate */);
 }
 
 void MainDialog::updateConfig(const QString &name) {

@@ -310,6 +310,7 @@
      <string>&amp;File</string>
     </property>
     <addaction name="actionUpload_a_file"/>
+    <addaction name="actionTruncate_log_file"/>
    </widget>
    <widget class="QMenu" name="menuSettings">
     <property name="title">
@@ -385,6 +386,14 @@
   <action name="actionSettings">
    <property name="text">
     <string>&amp;Advanced settings</string>
+   </property>
+  </action>
+  <action name="actionTruncate_log_file">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Truncate log file</string>
    </property>
   </action>
  </widget>

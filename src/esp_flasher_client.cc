@@ -1,5 +1,7 @@
 #include "esp_flasher_client.h"
 
+#include <common/platforms/esp8266/stubs/stub_flasher.h>
+
 #include <QCryptographicHash>
 #include <QDataStream>
 #include <QFile>
@@ -22,16 +24,6 @@ const quint32 flashBlockEraseTimeMs = 900;
 const quint32 flashEraseMinTimeoutMs = 5000;
 
 const quint32 flashReadBlockSize = 1024;
-
-// Must be in sync with stub_flasher.c
-enum stub_cmd {
-  CMD_FLASH_ERASE = 0,
-  CMD_FLASH_WRITE = 1,
-  CMD_FLASH_READ = 2,
-  CMD_FLASH_DIGEST = 3,
-  CMD_FLASH_READ_CHIP_ID = 4,
-  CMD_REBOOT = 5,
-};
 
 QByteArray cmdByte(enum stub_cmd cmd) {
   QByteArray result;
@@ -320,11 +312,20 @@ util::StatusOr<quint32> ESPFlasherClient::getFlashChipID() {
   return chipID;
 }
 
+util::Status ESPFlasherClient::bootFirmware() {
+  qDebug() << "ESPFlasherClient::bootFirmware()";
+  util::Status st = SLIP::send(rom_->data_port(), cmdByte(CMD_BOOT_FW));
+  if (!st.ok()) return QSP(tr("reboot(): command write failed"), st);
+  auto res = SLIP::recv(rom_->data_port(), 200);
+  if (!st.ok()) return QSP(tr("reboot(): failed to read response"), st);
+  return util::Status::OK;
+}
+
 util::Status ESPFlasherClient::reboot() {
   qDebug() << "ESPFlasherClient::reboot()";
   util::Status st = SLIP::send(rom_->data_port(), cmdByte(CMD_REBOOT));
   if (!st.ok()) return QSP(tr("reboot(): command write failed"), st);
-  auto res = SLIP::recv(rom_->data_port(), 15000);
+  auto res = SLIP::recv(rom_->data_port(), 200);
   if (!st.ok()) return QSP(tr("reboot(): failed to read response"), st);
   return util::Status::OK;
 }

@@ -437,24 +437,9 @@ class FlasherImpl : public Flasher {
     st = verifyImages(&flasher_client, blobs_);
     if (!st.ok()) return QSP("verification failed", st);
 
-    emit statusMessage(tr("Flashing successful, rebooting..."), true);
+    emit statusMessage(tr("Flashing successful, booting firmare..."), true);
 
-    // Ideally, we'd like to tell flasher stub to boot the firmware here,
-    // but for some reason jumping to ResetVector returns to the loader.
-    // If we have the control pins connected, this won't matter. If not,
-    // user won't see anything on the console.
-    // We can tell that control pins are connected if the ROM connect below
-    // succeeds (now we are still in flasher stub and it doesn't speak the
-    // ROM protocol, so if we managed to sync, it means we have control of the
-    // RST pin).
-
-    if (flasher_client.disconnect().ok() && rom.connect().ok()) {
-      return rom.rebootIntoFirmware();
-    }
-
-    return util::Status(util::error::UNAVAILABLE,
-                        "Flashing succeded but reboot failed.\nYou may need to "
-                        "reboot manually.");
+    return flasher_client.bootFirmware();
   }
 
   util::Status sanityCheckImages(const QMap<ulong, QByteArray> &images,

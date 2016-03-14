@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef CONFIG_H
-#define CONFIG_H
+#ifndef CS_FNC_SRC_CONFIG_H_
+#define CS_FNC_SRC_CONFIG_H_
 
 #include <QCommandLineOption>
 #include <QList>
@@ -68,4 +68,4 @@ class Config {
   QMap<QString, QString> flags_;
 };
 
-#endif  // CONFIG_H
+#endif /* CS_FNC_SRC_CONFIG_H_ */

@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef ESP8266_H
-#define ESP8266_H
+#ifndef CS_FNC_SRC_ESP8266_H_
+#define CS_FNC_SRC_ESP8266_H_
 
 #include <memory>
 
@@ -29,4 +29,4 @@ std::unique_ptr<HAL> HAL();
 
 }  // namespace ESP8266
 
-#endif  // ESP8266_H
+#endif /* CS_FNC_SRC_ESP8266_H_ */

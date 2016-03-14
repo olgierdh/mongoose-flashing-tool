@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef FLASHER_H
-#define FLASHER_H
+#ifndef CS_FNC_SRC_FLASHER_H_
+#define CS_FNC_SRC_FLASHER_H_
 
 #include <QObject>
 #include <QSerialPort>
@@ -62,4 +62,4 @@ signals:
 QByteArray randomDeviceID(const QString &domain);
 util::StatusOr<quint32> parseSize(const QVariant &value);
 
-#endif  // FLASHER_H
+#endif /* CS_FNC_SRC_FLASHER_H_ */

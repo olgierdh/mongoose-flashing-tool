@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef HAL_H
-#define HAL_H
+#ifndef CS_FNC_SRC_HAL_H_
+#define CS_FNC_SRC_HAL_H_
 
 #include <memory>
 
@@ -25,4 +25,4 @@ class HAL {
   virtual util::Status reboot(QSerialPort *) const = 0;
 };
 
-#endif  // HAL_H
+#endif /* CS_FNC_SRC_HAL_H_ */

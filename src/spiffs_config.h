@@ -10,8 +10,8 @@
  *      Author: petera
  */
 
-#ifndef SPIFFS_CONFIG_H_
-#define SPIFFS_CONFIG_H_
+#ifndef CS_FNC_SRC_SPIFFS_CONFIG_H_
+#define CS_FNC_SRC_SPIFFS_CONFIG_H_
 
 // Following includes are for the linux test build of spiffs
 // These may/should/must be removed/altered/replaced in your target
@@ -30,4 +30,4 @@ typedef uint8_t u8_t;
 
 #include "spiffs_config_common.h"
 
-#endif /* SPIFFS_CONFIG_H_ */
+#endif /* CS_FNC_SRC_SPIFFS_CONFIG_H_ */

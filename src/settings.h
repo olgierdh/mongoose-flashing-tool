@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef SETTINGS_H
-#define SETTINGS_H
+#ifndef CS_FNC_SRC_SETTINGS_H_
+#define CS_FNC_SRC_SETTINGS_H_
 
 #include <QCommandLineOption>
 #include <QDialog>
@@ -45,4 +45,4 @@ signals:
   QSet<QString> updated_;
 };
 
-#endif  // SETTINGS_H
+#endif /* CS_FNC_SRC_SETTINGS_H_ */

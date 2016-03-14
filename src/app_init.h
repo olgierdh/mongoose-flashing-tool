@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef APP_INIT_H
-#define APP_INIT_H
+#ifndef CS_FNC_SRC_APP_INIT_H_
+#define CS_FNC_SRC_APP_INIT_H_
 
 #include <QCommandLineParser>
 
@@ -16,4 +16,4 @@
 util::Status initApp(int *argc, char *argv[], Config *config,
                      QCommandLineParser *parser);
 
-#endif
+#endif /* CS_FNC_SRC_APP_INIT_H_ */

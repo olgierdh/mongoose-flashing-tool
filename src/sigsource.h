@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef SIGSOURCE_H
-#define SIGSOURCE_H
+#ifndef CS_FNC_SRC_SIGSOURCE_H_
+#define CS_FNC_SRC_SIGSOURCE_H_
 
 #include <QObject>
 
@@ -23,4 +23,4 @@ signals:
 
 SigSource *initSignalSource(QObject *parent);
 
-#endif  // SIGSOURCE_H
+#endif /* CS_FNC_SRC_SIGSOURCE_H_ */

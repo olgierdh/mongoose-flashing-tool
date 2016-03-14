@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef CLI_H
-#define CLI_H
+#ifndef CS_FNC_SRC_CLI_H_
+#define CS_FNC_SRC_CLI_H_
 
 #include <memory>
 
@@ -38,4 +38,4 @@ class CLI : public QObject {
   Prompter *prompter_;
 };
 
-#endif  // CLI_H
+#endif /* CS_FNC_SRC_CLI_H_ */

@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef SERIAL_H
-#define SERIAL_H
+#ifndef CS_FNC_SRC_SERIAL_H_
+#define CS_FNC_SRC_SERIAL_H_
 
 #include <QSerialPortInfo>
 
@@ -17,4 +17,4 @@ util::StatusOr<QSerialPort *> connectSerial(const QSerialPortInfo &port,
 
 util::Status setSpeed(QSerialPort *port, int speed);
 
-#endif  // SERIAL_H
+#endif /* CS_FNC_SRC_SERIAL_H_ */

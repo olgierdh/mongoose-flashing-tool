@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef SLIP_H
-#define SLIP_H
+#ifndef CS_FNC_SRC_SLIP_H_
+#define CS_FNC_SRC_SLIP_H_
 
 #include <QSerialPort>
 #include <QByteArray>
@@ -19,4 +19,4 @@ util::Status send(QSerialPort *out, const QByteArray &bytes,
 
 }  // namespace SLIP
 
-#endif /* SLIP_H */
+#endif /* CS_FNC_SRC_SLIP_H_ */

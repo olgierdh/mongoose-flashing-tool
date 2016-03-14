@@ -36,6 +36,7 @@
 #include "log.h"
 #include "log_viewer.h"
 #include "serial.h"
+#include "status_qt.h"
 #include "ui_about.h"
 
 #if (QT_VERSION < QT_VERSION_CHECK(5, 5, 0))
@@ -92,18 +93,6 @@ MainDialog::MainDialog(Config *config, QWidget *parent)
       config_(config),
       settingsDlg_(config->options(), this) {
   ui_.setupUi(this);
-
-  fwDir_ = QDir(QApplication::applicationDirPath());
-#ifdef Q_OS_MAC
-  if (fwDir_.exists("../firmware")) {
-    fwDir_.setPath(fwDir_.absoluteFilePath("../firmware"));
-  } else {
-    // If that does not exits, look 2 levels above, next to the app bundle.
-    fwDir_.setPath(fwDir_.absoluteFilePath("../../../firmware"));
-  }
-#else
-  fwDir_.setPath(fwDir_.absoluteFilePath("firmware"));
-#endif
 
   input_history_ = settings_.value("terminal/history").toStringList();
   restoreGeometry(settings_.value("window/geometry").toByteArray());
@@ -276,13 +265,13 @@ void MainDialog::setState(State newState) {
   switch (state_) {
     case NoPortSelected:
     case NotConnected:
-      ui_.connectBtn->setText(tr("Connect"));
+      ui_.connectBtn->setText(tr("&Connect"));
       break;
     case Connected:
     case Flashing:
     case PortGoneWhileFlashing:
     case Terminal:
-      ui_.connectBtn->setText(tr("Disconnect"));
+      ui_.connectBtn->setText(tr("Dis&connect"));
       break;
   }
 }
@@ -621,14 +610,21 @@ void MainDialog::flashingDone(QString msg, bool success) {
   }
   setState(Connected);
   if (state_ == PortGoneWhileFlashing) {
-    closeSerial();
-    return;
+    success = false;
+    msg = "Port went away while flashing";
   }
   if (success) {
-    ui_.terminal->appendPlainText(tr("--- flashed successfully"));
+    msg = tr("Flashed %1 %2 %3")
+              .arg(fw_->name())
+              .arg(fw_->platform().toUpper())
+              .arg(fw_->buildId());
+    ui_.statusMessage->setText(msg);
+    ui_.statusMessage->setStyleSheet("QLabel { color: green; }");
+    ui_.terminal->appendPlainText(tr("--- %1").arg(msg));
     connectDisconnectTerminal();
-    ui_.statusMessage->hide();
   } else {
+    ui_.statusMessage->setText(msg);
+    ui_.statusMessage->setStyleSheet("QLabel { color: red; }");
     closeSerial();
   }
 }
@@ -642,6 +638,7 @@ void MainDialog::loadFirmware() {
     qFatal("No HAL instance");
   }
   QString path = ui_.firmwareFileName->text();
+  ui_.statusMessage->setStyleSheet("QLabel { color: red; }");
   if (path.isEmpty()) {
     ui_.statusMessage->setText(tr("No firmware selected"));
     ui_.statusMessage->show();
@@ -659,12 +656,11 @@ void MainDialog::loadFirmware() {
     ui_.statusMessage->show();
     return;
   }
-  std::unique_ptr<FirmwareBundle> fw = loadFirmwareBundle(path);
-  if (fw == nullptr) {
+  if (!loadFirmwareBundle(path).ok()) {
     // Error already shown by loadFirmwareBundle.
     return;
   }
-  s = f->setFirmware(fw.get());
+  s = f->setFirmware(fw_.get());
   if (!s.ok()) {
     ui_.statusMessage->setText(s.ToString().c_str());
     return;
@@ -688,6 +684,7 @@ void MainDialog::loadFirmware() {
     return;
   }
 
+  ui_.statusMessage->setStyleSheet("");
   ui_.progressBar->show();
   ui_.statusMessage->show();
   ui_.progressBar->setRange(0, f->totalBytes());
@@ -878,15 +875,14 @@ void MainDialog::showSettings() {
   settingsDlg_.show();
 }
 
-std::unique_ptr<FirmwareBundle> MainDialog::loadFirmwareBundle(
-    const QString &fileName) {
+util::Status MainDialog::loadFirmwareBundle(const QString &fileName) {
   auto fwbs = NewZipFWBundle(fileName);
   if (!fwbs.ok()) {
     QMessageBox::critical(this, tr("Error"),
                           tr("Failed to load %1: %2")
                               .arg(fileName)
                               .arg(fwbs.status().ToString().c_str()));
-    return nullptr;
+    return QS(util::error::INVALID_ARGUMENT, "");
   }
   std::unique_ptr<FirmwareBundle> fwb = fwbs.MoveValueOrDie();
   if (fwb->platform().toUpper() !=
@@ -895,18 +891,19 @@ std::unique_ptr<FirmwareBundle> MainDialog::loadFirmwareBundle(
                           tr("Platform mismatch: %1 vs %2")
                               .arg(fwb->platform())
                               .arg(ui_.platformSelector->currentText()));
-    return nullptr;
+    return QS(util::error::INVALID_ARGUMENT, "");
   }
   ui_.firmwareFileName->setText(fileName);
   ui_.statusMessage->setText(tr("Loaded %1 %2 %3")
                                  .arg(fwb->name())
                                  .arg(fwb->platform().toUpper())
                                  .arg(fwb->buildId()));
+  fw_ = std::move(fwb);
   ui_.statusMessage->show();
   settings_.setValue(
       QString("selectedFirmware_%1").arg(ui_.platformSelector->currentText()),
       fileName);
-  return std::move(fwb);
+  return util::Status::OK;
 }
 
 void MainDialog::openConsoleLogFile(bool truncate) {

@@ -101,13 +101,13 @@ signals:
 #endif
 
  private:
-  std::unique_ptr<FirmwareBundle> loadFirmwareBundle(const QString &fileName);
+  util::Status loadFirmwareBundle(const QString &fileName);
   void openConsoleLogFile(bool truncate);
 
   Config *config_ = nullptr;
   bool skip_detect_warning_ = false;
   std::unique_ptr<QThread> worker_;
-  QDir fwDir_;
+  std::unique_ptr<FirmwareBundle> fw_;
   std::unique_ptr<QSerialPort> serial_port_;
   QMultiMap<QWidget *, State> enabled_in_state_;
   QMultiMap<QAction *, State> action_enabled_in_state_;

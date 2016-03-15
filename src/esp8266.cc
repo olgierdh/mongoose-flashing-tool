@@ -400,23 +400,15 @@ class FlasherImpl : public Flasher {
       }
 
       emit statusMessage(
-          tr("Erasing %1 @ 0x%2...").arg(data.length()).arg(image_addr, 0, 16),
+          tr("Writing %1 @ 0x%2...").arg(data.length()).arg(image_addr, 0, 16),
           true);
-      st = flasher_client.erase(image_addr, data.length());
-
-      if (st.ok()) {
-        emit statusMessage(tr("Writing %1 @ 0x%2...")
-                               .arg(data.length())
-                               .arg(image_addr, 0, 16),
-                           true);
-        connect(&flasher_client, &ESPFlasherClient::progress,
-                [this, origLength](int bytesWritten) {
-                  emit progress(this->progress_ +
-                                std::min(bytesWritten, origLength));
-                });
-        st = flasher_client.write(image_addr, data, false /* erase */);
-        disconnect(&flasher_client, &ESPFlasherClient::progress, 0, 0);
-      }
+      connect(
+          &flasher_client, &ESPFlasherClient::progress,
+          [this, origLength](int bytesWritten) {
+            emit progress(this->progress_ + std::min(bytesWritten, origLength));
+          });
+      st = flasher_client.write(image_addr, data, true /* erase */);
+      disconnect(&flasher_client, &ESPFlasherClient::progress, 0, 0);
       if (!st.ok()) {
         return QS(util::error::UNAVAILABLE,
                   tr("failed to flash image at 0x%1: %2")

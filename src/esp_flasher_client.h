@@ -11,6 +11,8 @@
 
 #include "esp_rom_client.h"
 
+#include <common/platforms/esp8266/stubs/stub_flasher.h>
+
 class ESPFlasherClient : public QObject {
   Q_OBJECT
  public:
@@ -48,6 +50,8 @@ class ESPFlasherClient : public QObject {
 
   util::StatusOr<quint32> getFlashChipID();
 
+  util::Status eraseChip();
+
   util::Status bootFirmware();
 
   util::Status reboot();
@@ -56,6 +60,8 @@ signals:
   void progress(quint32 bytes);
 
  private:
+  util::Status simpleCmd(enum stub_cmd cmd, const QString &name, int timeoutMs);
+
   ESPROMClient *rom_;  // Not owned.
   qint32 oldBaudRate_ = 0;
 };

@@ -282,11 +282,9 @@ class FlasherImpl : public Flasher {
  public:
   FlasherImpl(){};
   util::Status setFirmware(FirmwareBundle *fw) override {
-    if (!fw->blobs().contains(kFWBundleFWPartName)) {
-      return QS(util::error::INVALID_ARGUMENT,
-                tr("No %1 in fw bundle").arg(kFWBundleFWPartName));
-    }
-    image_ = fw->blobs()[kFWBundleFWPartName];
+    const auto code = fw->getPartSource(kFWBundleFWPartName);
+    if (!code.ok()) return code.status();
+    image_ = code.ValueOrDie();
     const int kMaxSize =
         kBlockSizes[sizeof(kBlockSizes) / sizeof(kBlockSizes[0]) - 1] * 255;
     if (image_.length() > kMaxSize) {
@@ -297,9 +295,12 @@ class FlasherImpl : public Flasher {
                               .toStdString());
     }
     spiffs_image_.clear();
-    if (fw->blobs().contains(kFWBundleFSPartName)) {
-      spiffs_image_ = fw->blobs()[kFWBundleFSPartName];
+    const auto fs = fw->getPartSource(kFWBundleFSPartName);
+    if (fs.ok()) {
+      spiffs_image_ = fs.ValueOrDie();
     }
+    qInfo() << fw->buildId() << "code" << image_.length() << "fs"
+            << spiffs_image_.length();
     return util::Status::OK;
   }
 

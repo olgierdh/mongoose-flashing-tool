@@ -38,6 +38,8 @@ class FirmwareBundle {
   QMap<QString, Part> parts() const;
   QMap<QString, QByteArray> blobs() const;
 
+  util::StatusOr<QByteArray> getPartSource(const QString &partName) const;
+
  protected:
   QMap<QString, QByteArray> blobs_;
   QMap<QString, Part> parts_;

@@ -194,19 +194,11 @@ class FlasherImpl : public Flasher {
                       .arg(p.name)
                       .arg(addrStr));
       }
-      const QString src = p.attrs["src"];
-      if (src == "") {
-        return QS(util::error::INVALID_ARGUMENT,
-                  QObject::tr("part %1 has no source specified").arg(p.name));
-      }
-      if (!fw->blobs().contains(src)) {
-        return QS(util::error::INVALID_ARGUMENT,
-                  QObject::tr("source for part %1 does not exist").arg(p.name));
-      }
-      QByteArray data = fw->blobs()[src];
-      qInfo() << p.name << ":" << data.length() << "@" << hex << showbase
-              << addr;
-      blobs_[addr] = data;
+      const auto data = fw->getPartSource(p.name);
+      if (!data.ok()) return data.status();
+      qInfo() << p.name << ":" << data.ValueOrDie().length() << "@" << hex
+              << showbase << addr;
+      blobs_[addr] = data.ValueOrDie();
     }
     return util::Status::OK;
   }

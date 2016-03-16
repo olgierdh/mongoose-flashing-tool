@@ -17,6 +17,7 @@
 #include <QFontDatabase>
 #include <QFormLayout>
 #include <QMessageBox>
+#include <QNetworkRequest>
 #include <QMutex>
 #include <QScrollBar>
 #include <QSerialPort>
@@ -185,7 +186,7 @@ MainDialog::MainDialog(Config *config, QWidget *parent)
   connect(ui_.browseBtn, &QPushButton::clicked, this,
           &MainDialog::selectFirmwareFile);
 
-  connect(ui_.flashBtn, &QPushButton::clicked, this, &MainDialog::loadFirmware);
+  connect(ui_.flashBtn, &QPushButton::clicked, this, &MainDialog::flashClicked);
 
   connect(ui_.connectBtn, &QPushButton::clicked, this,
           &MainDialog::connectDisconnectTerminal);
@@ -265,11 +266,12 @@ void MainDialog::setState(State newState) {
   switch (state_) {
     case NoPortSelected:
     case NotConnected:
+    case Downloading:
+    case Flashing:
+    case PortGoneWhileFlashing:
       ui_.connectBtn->setText(tr("&Connect"));
       break;
     case Connected:
-    case Flashing:
-    case PortGoneWhileFlashing:
     case Terminal:
       ui_.connectBtn->setText(tr("Dis&connect"));
       break;
@@ -437,6 +439,7 @@ void MainDialog::connectDisconnectTerminal() {
     case Terminal:
       disconnectTerminal();
       closeSerial();
+    case Downloading:
     case Flashing:
     case PortGoneWhileFlashing:
       break;
@@ -618,18 +621,138 @@ void MainDialog::flashingDone(QString msg, bool success) {
               .arg(fw_->name())
               .arg(fw_->platform().toUpper())
               .arg(fw_->buildId());
-    ui_.statusMessage->setText(msg);
-    ui_.statusMessage->setStyleSheet("QLabel { color: green; }");
+    setStatusMessage(MsgType::OK, msg);
     ui_.terminal->appendPlainText(tr("--- %1").arg(msg));
     connectDisconnectTerminal();
   } else {
-    ui_.statusMessage->setText(msg);
-    ui_.statusMessage->setStyleSheet("QLabel { color: red; }");
+    setStatusMessage(MsgType::ERROR, msg);
     closeSerial();
   }
 }
 
-void MainDialog::loadFirmware() {
+void MainDialog::flashClicked() {
+  QString path = ui_.firmwareFileName->text();
+  if (path.isEmpty()) {
+    setStatusMessage(MsgType::ERROR, tr("No firmware selected"));
+    return;
+  }
+  QString portName = ui_.portSelector->currentData().toString();
+  if (portName == "") {
+    setStatusMessage(MsgType::ERROR, tr("No port selected"));
+    return;
+  }
+  if (path.startsWith("http://", Qt::CaseInsensitive) ||
+      path.startsWith("https://", Qt::CaseInsensitive)) {
+    downloadAndFlashFirmware(path);
+  } else {
+    flashFirmware(path);
+  }
+}
+
+void MainDialog::setStatusMessage(MsgType level, const QString &msg) {
+  emit ui_.statusMessage->setText(msg);
+  switch (level) {
+    case MsgType::OK:
+      emit ui_.statusMessage->setStyleSheet("QLabel { color: green; }");
+      qInfo() << msg.toUtf8().constData();
+      break;
+    case MsgType::INFO:
+      if (ui_.statusMessage->styleSheet() != "") {
+        emit ui_.statusMessage->setStyleSheet("");
+      }
+      qInfo() << msg.toUtf8().constData();
+      break;
+    case MsgType::ERROR:
+      emit ui_.statusMessage->setStyleSheet("QLabel { color: red; }");
+      qCritical() << msg.toUtf8().constData();
+      break;
+  }
+  if (!ui_.statusMessage->isVisible()) emit ui_.statusMessage->show();
+}
+
+void MainDialog::downloadAndFlashFirmware(const QString &url) {
+  prevState_ = state_;
+  setState(Downloading);
+  setStatusMessage(MsgType::INFO, "Downloading...");
+  url_ = url;
+  QNetworkRequest req(url_);
+  if (!etag_.isEmpty()) {
+    req.setRawHeader(QByteArray("If-None-Match"), etag_);
+  }
+  reply_ = nam_.get(req);
+  connect(reply_, &QNetworkReply::downloadProgress, this,
+          &MainDialog::downloadProgress);
+  connect(reply_, &QNetworkReply::finished, this, &MainDialog::httpDone);
+}
+
+void MainDialog::downloadProgress(qint64 recd, qint64 total) {
+  qDebug() << "downloadProgress" << recd << "of" << total;
+  // Only show progress when downloading something substantial.
+  // In particular, do not react to error an redirect responses.
+  if (total > 5000) {
+    ui_.progressBar->show();
+    ui_.progressBar->setRange(0, total);
+    ui_.progressBar->setValue(recd);
+  }
+}
+
+void MainDialog::httpDone() {
+  bool flash = false;
+  qDebug() << "httpDone";
+  ui_.progressBar->setValue(0);
+  ui_.progressBar->hide();
+  QVariant redir =
+      reply_->attribute(QNetworkRequest::RedirectionTargetAttribute);
+  do {
+    if (reply_->error()) {
+      setStatusMessage(MsgType::ERROR, reply_->errorString());
+      ui_.progressBar->hide();
+      break;
+    }
+    if (!redir.isNull()) {
+      reply_->deleteLater();
+      url_ = url_.resolved(redir.toUrl());
+      qDebug() << "Redirected to" << url_;
+      QNetworkRequest req(url_);
+      reply_ = nam_.get(req);
+      connect(reply_, &QNetworkReply::downloadProgress, this,
+              &MainDialog::downloadProgress);
+      connect(reply_, &QNetworkReply::finished, this, &MainDialog::httpDone);
+      return;
+    }
+    int code =
+        reply_->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    if (code == 304 /* Not Modified */) {
+      setStatusMessage(MsgType::INFO, tr("Not modified"));
+      flash = true;
+      break;
+    }
+    setStatusMessage(MsgType::INFO, tr("Download finished, %1 bytes")
+                                        .arg(reply_->bytesAvailable()));
+    tempFile_.reset(new QTemporaryFile());
+    if (!tempFile_->open()) {
+      setStatusMessage(MsgType::ERROR, tr("Failed to create temp file: %1")
+                                           .arg(tempFile_->errorString()));
+      break;
+    }
+    QByteArray data = reply_->readAll();
+    if (tempFile_->write(data) != data.length() || !tempFile_->flush()) {
+      setStatusMessage(MsgType::ERROR, tr("Failed to write data: %1")
+                                           .arg(tempFile_->errorString()));
+      break;
+    }
+    etag_ = reply_->rawHeader("ETag");
+    if (etag_.startsWith("W/")) etag_.clear();
+    qDebug() << "Wrote" << data.length() << "bytes to" << tempFile_->fileName()
+             << "ETag" << etag_;
+    flash = true;
+  } while (false);
+  setState(prevState_);
+  reply_->deleteLater();
+  if (flash) flashFirmware(tempFile_->fileName());
+}
+
+void MainDialog::flashFirmware(const QString &file) {
   // Check if the terminal is scrolled down to the bottom before showing
   // progress bar, so we can scroll it back again after we're done.
   auto *scroll = ui_.terminal->verticalScrollBar();
@@ -637,32 +760,20 @@ void MainDialog::loadFirmware() {
   if (hal_ == nullptr) {
     qFatal("No HAL instance");
   }
-  QString path = ui_.firmwareFileName->text();
-  ui_.statusMessage->setStyleSheet("QLabel { color: red; }");
-  if (path.isEmpty()) {
-    ui_.statusMessage->setText(tr("No firmware selected"));
-    ui_.statusMessage->show();
-    return;
-  }
-  QString portName = ui_.portSelector->currentData().toString();
-  if (portName == "") {
-    ui_.statusMessage->setText(tr("No port selected"));
-  }
   std::unique_ptr<Flasher> f(hal_->flasher(prompter_));
   util::Status s = f->setOptionsFromConfig(*config_);
   if (!s.ok()) {
-    ui_.statusMessage->setText(tr("Invalid command line flag setting: ") +
-                               s.ToString().c_str());
-    ui_.statusMessage->show();
+    setStatusMessage(MsgType::ERROR, tr("Invalid command line flag setting: ") +
+                                         s.ToString().c_str());
     return;
   }
-  if (!loadFirmwareBundle(path).ok()) {
+  if (!loadFirmwareBundle(file).ok()) {
     // Error already shown by loadFirmwareBundle.
     return;
   }
   s = f->setFirmware(fw_.get());
   if (!s.ok()) {
-    ui_.statusMessage->setText(s.ToString().c_str());
+    setStatusMessage(MsgType::ERROR, s.ToString().c_str());
     return;
   }
   if (state_ == Terminal) {
@@ -670,34 +781,30 @@ void MainDialog::loadFirmware() {
   }
   s = openSerial();
   if (!s.ok()) {
-    ui_.statusMessage->setText(s.error_message().c_str());
+    setStatusMessage(MsgType::ERROR, s.ToString().c_str());
     return;
   }
   if (state_ != Connected) {
-    ui_.statusMessage->setText(tr("port is not connected"));
+    setStatusMessage(MsgType::ERROR, tr("port is not connected"));
     return;
   }
   setState(Flashing);
   s = f->setPort(serial_port_.get());
   if (!s.ok()) {
-    ui_.statusMessage->setText(s.error_message().c_str());
+    setStatusMessage(MsgType::ERROR, s.ToString().c_str());
     return;
   }
 
-  ui_.statusMessage->setStyleSheet("");
   ui_.progressBar->show();
-  ui_.statusMessage->show();
   ui_.progressBar->setRange(0, f->totalBytes());
   connect(f.get(), &Flasher::progress, ui_.progressBar,
           &QProgressBar::setValue);
-  connect(f.get(), &Flasher::done, ui_.statusMessage, &QLabel::setText);
   connect(f.get(), &Flasher::done,
           [this]() { serial_port_->moveToThread(this->thread()); });
-  connect(f.get(), &Flasher::statusMessage, ui_.statusMessage,
-          &QLabel::setText);
   connect(f.get(), &Flasher::statusMessage,
           [this](QString msg, bool important) {
-            if (important) qInfo() << msg.toUtf8().constData();
+            setStatusMessage(MsgType::INFO, msg);
+            (void) important;
           });
   connect(f.get(), &Flasher::done, this, &MainDialog::flashingDone);
 
@@ -878,31 +985,29 @@ void MainDialog::showSettings() {
 util::Status MainDialog::loadFirmwareBundle(const QString &fileName) {
   auto fwbs = NewZipFWBundle(fileName);
   if (!fwbs.ok()) {
-    QMessageBox::critical(this, tr("Error"),
-                          tr("Failed to load %1: %2")
-                              .arg(fileName)
-                              .arg(fwbs.status().ToString().c_str()));
+    setStatusMessage(MsgType::ERROR,
+                     tr("Failed to load %1: %2")
+                         .arg(fileName)
+                         .arg(fwbs.status().ToString().c_str()));
     return QS(util::error::INVALID_ARGUMENT, "");
   }
   std::unique_ptr<FirmwareBundle> fwb = fwbs.MoveValueOrDie();
   if (fwb->platform().toUpper() !=
       ui_.platformSelector->currentText().toUpper()) {
-    QMessageBox::critical(this, tr("Error"),
-                          tr("Platform mismatch: %1 vs %2")
-                              .arg(fwb->platform())
-                              .arg(ui_.platformSelector->currentText()));
+    setStatusMessage(MsgType::ERROR,
+                     tr("Platform mismatch: want %1, got %2")
+                         .arg(ui_.platformSelector->currentText())
+                         .arg(fwb->platform()));
     return QS(util::error::INVALID_ARGUMENT, "");
   }
-  ui_.firmwareFileName->setText(fileName);
-  ui_.statusMessage->setText(tr("Loaded %1 %2 %3")
-                                 .arg(fwb->name())
-                                 .arg(fwb->platform().toUpper())
-                                 .arg(fwb->buildId()));
+  setStatusMessage(MsgType::INFO, tr("Loaded %1 %2 %3")
+                                      .arg(fwb->name())
+                                      .arg(fwb->platform().toUpper())
+                                      .arg(fwb->buildId()));
   fw_ = std::move(fwb);
-  ui_.statusMessage->show();
   settings_.setValue(
       QString("selectedFirmware_%1").arg(ui_.platformSelector->currentText()),
-      fileName);
+      ui_.firmwareFileName->text());
   return util::Status::OK;
 }
 

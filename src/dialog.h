@@ -14,13 +14,17 @@
 #include <QMainWindow>
 #include <QMessageBox>
 #include <QMultiMap>
+#include <QNetworkAccessManager>
 #include <QNetworkConfigurationManager>
+#include <QNetworkReply>
 #include <QPair>
 #include <QSerialPort>
 #include <QSettings>
 #include <QString>
 #include <QStringList>
+#include <QTemporaryFile>
 #include <QThread>
+#include <QUrl>
 
 #include <common/util/statusor.h>
 
@@ -54,13 +58,14 @@ class MainDialog : public QMainWindow {
     NoPortSelected,
     NotConnected,
     Connected,
+    Downloading,
     Flashing,
     PortGoneWhileFlashing,
     Terminal,
   };
 
  public slots:
-  void loadFirmware();
+  void flashClicked();
   void connectDisconnectTerminal();
 
  private slots:
@@ -93,6 +98,9 @@ class MainDialog : public QMainWindow {
   void updateConfig(const QString &name);
   void truncateConsoleLog();
 
+  void downloadProgress(qint64 recd, qint64 total);
+  void httpDone();
+
 signals:
   void gotPrompt();
   void showPromptResult(int clicked_button);
@@ -101,6 +109,11 @@ signals:
 #endif
 
  private:
+  enum class MsgType { OK, INFO, ERROR };
+  void setStatusMessage(MsgType level, const QString &msg);
+
+  void downloadAndFlashFirmware(const QString &url);
+  void flashFirmware(const QString &file);
   util::Status loadFirmwareBundle(const QString &fileName);
   void openConsoleLogFile(bool truncate);
 
@@ -125,6 +138,14 @@ signals:
   std::unique_ptr<LogViewer> log_viewer_;
 
   QNetworkConfigurationManager net_mgr_;
+
+  // File download state.
+  QUrl url_;
+  QNetworkAccessManager nam_;
+  std::unique_ptr<QTemporaryFile> tempFile_;
+  QByteArray etag_;
+  QNetworkReply *reply_;
+  State prevState_;
 
   State state_ = NoPortSelected;
 

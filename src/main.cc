@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
     MainDialog w(&config);
     w.show();
     SigSource *ss = initSignalSource(&w);
-    QObject::connect(ss, &SigSource::flash, &w, &MainDialog::loadFirmware);
+    QObject::connect(ss, &SigSource::flash, &w, &MainDialog::flashClicked);
     QObject::connect(ss, &SigSource::connectDisconnect, &w,
                      &MainDialog::connectDisconnectTerminal);
     _exit(app.exec());

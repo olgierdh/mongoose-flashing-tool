@@ -6,9 +6,14 @@ provide advanced options via command-line flags.
 ## EP8266
 
 Flashing ESP8266 repeatedly is easier with additional wiring.
-
 See [here](https://github.com/cesanta/smart.js/blob/master/smartjs/platforms/esp8266/flashing.md)
 for more details.
+
+## CC3200
+
+Flashing CC3200 requires `SOP2` jumper to be closed.
+To make repeated flashing easier, consider installing an additional jumper wire
+described [here](http://energia.nu/cc3200guide/).
 
 ## Firmware format
 

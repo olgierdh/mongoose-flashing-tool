@@ -72,7 +72,8 @@ util::StatusOr<QByteArray> FirmwareBundle::getPartSource(
           .toLower();
   if (digest != expected_digest) {
     return QS(util::error::INVALID_ARGUMENT,
-              QObject::tr("part %1: invalid digest - expected %1, got %2")
+              QObject::tr("part %1: invalid digest - expected %2, got %3")
+                  .arg(p.name)
                   .arg(expected_digest)
                   .arg(digest));
   }

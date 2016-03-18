@@ -316,7 +316,10 @@ class FlasherImpl : public Flasher {
       return QSP("Failed to run and communicate with flasher stub", st);
     }
 
-    if (flashSize_ == 0) {
+    if (override_flash_params_ >= 0) {
+      // This really can't go wrong, we parsed the params.
+      flashSize_ = flashSizeFromParams(override_flash_params_).ValueOrDie();
+    } else if (flashSize_ == 0) {
       qInfo() << "Detecting flash size...";
       auto flashChipIDRes = flasher_client.getFlashChipID();
       if (flashChipIDRes.ok()) {
@@ -429,7 +432,7 @@ class FlasherImpl : public Flasher {
   util::Status sanityCheckImages(const QMap<ulong, QByteArray> &images,
                                  quint32 flashSize, quint32 flashSectorSize) {
     const auto keys = images.keys();
-    for (int i = 0; i < keys.length() - 1; i++) {
+    for (int i = 0; i < keys.length(); i++) {
       const quint32 imageBegin = keys[i];
       const QByteArray &image = images[imageBegin];
       const quint32 imageEnd = imageBegin + image.length();
@@ -703,6 +706,15 @@ const map<string, int> flashSize = {
     {"32m-c2", 7},
 };
 
+const map<int, int> flashSizeById = {{0, 524288},
+                                     {1, 262144},
+                                     {2, 1048576},
+                                     {3, 2097152},
+                                     {4, 4194304},
+                                     {5, 2097152},
+                                     {6, 4194304},
+                                     {7, 4194304}};
+
 const map<string, int> flashFreq = {
     {"40m", 0}, {"26m", 1}, {"20m", 2}, {"80m", 0xf},
 };
@@ -740,6 +752,14 @@ util::StatusOr<int> flashParamsFromString(const QString &s) {
           util::error::INVALID_ARGUMENT,
           "must be either a number or a comma-separated list of three items");
   }
+}
+
+util::StatusOr<int> flashSizeFromParams(int flashParams) {
+  int flashSizeId = (flashParams & 0xff) >> 4;
+  if (flashSizeById.find(flashSizeId) == flashSizeById.end()) {
+    return util::Status(util::error::INVALID_ARGUMENT, "invalid flash size id");
+  }
+  return flashSizeById.at(flashSizeId);
 }
 
 void addOptions(Config *config) {

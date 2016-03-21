@@ -299,6 +299,16 @@ class FlasherImpl : public Flasher {
     if (fs.ok()) {
       spiffs_image_ = fs.ValueOrDie();
     }
+    for (const auto &p : fw->parts()) {
+      if (p.name == kFWBundleFWPartName || p.name == kFWBundleFSPartName) {
+        continue;
+      }
+      const auto data = fw->getPartSource(p.name);
+      if (!data.ok()) return data.status();
+      qDebug() << "Extra file:" << p.name << data.ValueOrDie().length()
+               << "bytes";
+      extra_files_[p.name] = data.ValueOrDie();
+    }
     qInfo() << fw->buildId() << "code" << image_.length() << "fs"
             << spiffs_image_.length();
     return util::Status::OK;
@@ -428,7 +438,7 @@ class FlasherImpl : public Flasher {
       }
     }
     emit statusMessage(tr("Uploading the firmware image..."), true);
-    st = uploadFW(image_, kFWFilename);
+    st = uploadFile(image_, kFWFilename);
     if (!st.ok()) {
       return st;
     }
@@ -438,6 +448,10 @@ class FlasherImpl : public Flasher {
       if (!st.ok()) {
         return st;
       }
+    }
+    for (const QString &f : extra_files_.keys()) {
+      st = uploadFile(extra_files_[f], f);
+      if (!st.ok()) return st;
     }
 #ifndef NO_LIBFTDI
     emit statusMessage(tr("Rebooting into firmware..."), true);
@@ -718,7 +732,7 @@ class FlasherImpl : public Flasher {
     return sendPacket(port_, payload);
   }
 
-  util::Status uploadFW(const QByteArray &bytes, const QString &filename) {
+  util::Status uploadFile(const QByteArray &bytes, const QString &filename) {
     auto info = getFileInfo(filename);
     if (!info.ok()) {
       return info.status();
@@ -892,8 +906,8 @@ class FlasherImpl : public Flasher {
       if (!merged.ok()) {
         return merged.status();
       }
-      if (!files_.empty()) {
-        merged = mergeFiles(merged.ValueOrDie(), files_);
+      if (!extra_spiffs_files_.empty()) {
+        merged = mergeFiles(merged.ValueOrDie(), extra_spiffs_files_);
         if (!merged.ok()) {
           return merged.status();
         }
@@ -903,7 +917,7 @@ class FlasherImpl : public Flasher {
     image.append(meta);
     QString fname = min_seq == 0 ? kFS1Filename : kFS0Filename;
     qInfo() << "Overwriting" << fname;
-    return uploadFW(image, fname);
+    return uploadFile(image, fname);
   }
 
   util::Status formatFailFS(int size) {
@@ -919,7 +933,8 @@ class FlasherImpl : public Flasher {
   mutable QMutex lock_;
   QByteArray image_;
   QByteArray spiffs_image_;
-  QMap<QString, QByteArray> files_;
+  QMap<QString, QByteArray> extra_files_;
+  QMap<QString, QByteArray> extra_spiffs_files_;
   QSerialPort *port_;
   bool merge_spiffs_ = false;
   int failfs_size_ = -1;

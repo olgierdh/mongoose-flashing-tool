@@ -13,6 +13,8 @@
 #include <common/util/error_codes.h>
 #include <common/util/status.h>
 
+#include "status_qt.h"
+
 #if (QT_VERSION < QT_VERSION_CHECK(5, 5, 0))
 #define qInfo qWarning
 #endif
@@ -33,9 +35,9 @@ util::StatusOr<QSerialPort *> connectSerial(const QSerialPortInfo &port,
             "connectSerial", "Failed to disable flow control").toStdString());
   }
   if (!s->open(QIODevice::ReadWrite)) {
-    return util::Status(util::error::INTERNAL,
-                        QCoreApplication::translate(
-                            "connectSerial", "Failed to open").toStdString());
+    return QS(util::error::INTERNAL, QObject::tr("Failed to open %1: %2")
+                                         .arg(port.portName())
+                                         .arg(s->errorString()));
   }
   auto st = setSpeed(s.get(), speed);
   if (!st.ok()) {

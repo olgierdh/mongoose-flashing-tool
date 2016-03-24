@@ -599,8 +599,8 @@ void MainDialog::selectFirmwareFile() {
   }
   QString fileName = QFileDialog::getOpenFileName(
       this, tr("Select firmware file"), curDir, tr("Firmware files (*.zip)"));
-  if (fileName != "") {
-    loadFirmwareBundle(fileName);  // Take a peek, we'll reload before flashing
+  if (fileName != "" && loadFirmwareBundle(fileName).ok()) {
+    ui_.firmwareFileName->setText(fileName);
   }
 }
 

@@ -10,6 +10,7 @@
 #include <QDebug>
 #include <QDesktopServices>
 #include <QDialog>
+#include <QGuiApplication>
 #include <QEvent>
 #include <QFile>
 #include <QFileDialog>
@@ -543,7 +544,8 @@ void MainDialog::reboot() {
 }
 
 void MainDialog::updatePortList() {
-  if (state_ != NotConnected && state_ != NoPortSelected) {
+  if (state_ != NotConnected && state_ != NoPortSelected &&
+      QGuiApplication::applicationState() != Qt::ApplicationActive) {
     return;
   }
 

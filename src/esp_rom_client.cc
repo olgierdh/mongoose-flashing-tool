@@ -95,6 +95,11 @@ util::Status ESPROMClient::memWriteStart(quint32 size, quint32 numBlocks,
   if (!connected_) {
     return util::Status(util::error::INVALID_ARGUMENT, "Not connected");
   }
+  qDebug() << QString("ESPROMClient::memWriteStart(%1, %2, %3, 0x%4)")
+                  .arg(size)
+                  .arg(numBlocks)
+                  .arg(blockSize)
+                  .arg(addr, 0, 16);
   QByteArray arg;
   QDataStream s(&arg, QIODevice::WriteOnly);
   s.setByteOrder(QDataStream::LittleEndian);
@@ -226,6 +231,10 @@ util::Status ESPROMClient::softReset() {
 
 util::Status ESPROMClient::writeMem(quint32 addr, const QByteArray &data,
                                     quint32 jumpAddr) {
+  qDebug() << QString("ESPROMClient::writeMem(0x%1, %2, %3)")
+                  .arg(addr, 0, 16)
+                  .arg(data.length())
+                  .arg(jumpAddr, 0, 16);
   quint32 numBlocks =
       ((data.length() + memWriteBlockSize - 1) / memWriteBlockSize);
   util::Status st =
@@ -274,7 +283,7 @@ util::StatusOr<ESPROMClient::Response> ESPROMClient::command(
   s << quint32(csum);  // Yes, it is indeed padded with 3 zero bytes.
   frame.append(arg);
   data_port_->readAll();  // Flush the buffer before command.
-  qDebug() << "Command:" << quint8(cmd);
+  qDebug() << "Command:" << quint8(cmd) << "arg:" << arg.toHex();
   SLIP::send(data_port_, frame);
 
   if (expectResponse) {

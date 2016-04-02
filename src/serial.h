@@ -12,7 +12,11 @@
 
 class QSerialPort;
 
+util::StatusOr<QSerialPortInfo> findSerial(const QString &systemLocation);
+
 util::StatusOr<QSerialPort *> connectSerial(const QSerialPortInfo &port,
+                                            int speed = 115200);
+util::StatusOr<QSerialPort *> connectSerial(const QString &systemLocation,
                                             int speed = 115200);
 
 util::Status setSpeed(QSerialPort *port, int speed);

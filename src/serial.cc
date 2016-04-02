@@ -19,6 +19,17 @@
 #define qInfo qWarning
 #endif
 
+util::StatusOr<QSerialPortInfo> findSerial(const QString &systemLocation) {
+  for (const auto &port : QSerialPortInfo::availablePorts()) {
+    if (port.systemLocation() == systemLocation) {
+      qDebug() << systemLocation << "->" << port.portName();
+      return port;
+    }
+  }
+  return QS(util::error::INVALID_ARGUMENT,
+            QObject::tr("No such port (%1)").arg(systemLocation));
+}
+
 util::StatusOr<QSerialPort *> connectSerial(const QSerialPortInfo &port,
                                             int speed) {
   std::unique_ptr<QSerialPort> s(new QSerialPort(port));
@@ -47,8 +58,7 @@ util::StatusOr<QSerialPort *> connectSerial(const QSerialPortInfo &port,
 }
 
 util::Status setSpeed(QSerialPort *port, int speed) {
-  qInfo() << "Setting" << port->portName() << "speed to" << speed
-          << "(real speed may be different)";
+  qInfo() << "Setting" << port->portName() << "speed to" << speed;
   if (!port->setBaudRate(speed)) {
     return util::Status(
         util::error::INTERNAL,
@@ -64,4 +74,11 @@ util::Status setSpeed(QSerialPort *port, int speed) {
   }
 #endif
   return util::Status::OK;
+}
+
+util::StatusOr<QSerialPort *> connectSerial(const QString &systemLocation,
+                                            int speed) {
+  const auto qspi = findSerial(systemLocation);
+  if (!qspi.ok()) return qspi.status();
+  return connectSerial(qspi.ValueOrDie(), speed);
 }

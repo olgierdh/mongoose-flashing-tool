@@ -349,7 +349,7 @@ util::Status MainDialog::openSerial() {
   qDebug() << "Opening" << portName;
   util::StatusOr<QSerialPort *> r = connectSerial(QSerialPortInfo(portName));
   if (!r.ok()) {
-    qDebug() << "connectSerial:" << r.status().ToString().c_str();
+    qCritical() << "connectSerial:" << r.status().ToString().c_str();
     return r.status();
   }
   serial_port_.reset(r.ValueOrDie());

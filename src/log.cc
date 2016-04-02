@@ -41,54 +41,46 @@ void outputHandler(QtMsgType type, const QMessageLogContext &context,
     return;
   }
   QByteArray localMsg = msg.toLocal8Bit();
+  const char *ll = nullptr;
+  bool die = false;
   switch (type) {
     case QtDebugMsg:
-      if (verbosity >= 4) {
-        *logfile << "DEBUG: ";
-        if (context.file != NULL) {
-          *logfile << context.file << ":" << context.line;
-        }
-        *logfile << localMsg.constData() << endl;
-      }
+      if (verbosity >= 4) ll = "DEBUG";
       break;
 #if (QT_VERSION >= QT_VERSION_CHECK(5, 5, 0))
     case QtInfoMsg:
-      if (verbosity >= 3) {
-        *logfile << "INFO: ";
-        if (context.file != NULL) {
-          *logfile << context.file << ":" << context.line;
-        }
-        *logfile << localMsg.constData() << endl;
-      }
+      if (verbosity >= 3) ll = "INFO";
       break;
 #endif
     case QtWarningMsg:
-      if (verbosity >= 2) {
-        *logfile << "WARNING: ";
-        if (context.file != NULL) {
-          *logfile << context.file << ":" << context.line;
-        }
-        *logfile << localMsg.constData() << endl;
-      }
+      if (verbosity >= 2) ll = "WARNING";
       break;
     case QtCriticalMsg:
+      if (verbosity >= 1) ll = "CRITICAL";
+      break;
       if (verbosity >= 1) {
         *logfile << "CRITICAL: ";
         if (context.file != NULL) {
-          *logfile << context.file << ":" << context.line;
+          *logfile << context.file << ":" << context.line << " ";
         }
         *logfile << localMsg.constData() << endl;
       }
       break;
     case QtFatalMsg:
-      *logfile << "FATAL: ";
-      if (context.file != NULL) {
-        *logfile << context.file << ":" << context.line;
-      }
-      *logfile << localMsg.constData() << endl;
-      abort();
+      ll = "FATAL";
+      die = true;
+      break;
   }
+  if (ll != nullptr) {
+    *logfile << ll << ": ";
+    if (context.file != NULL) {
+      *logfile << context.file << ":" << context.line << " ";
+    }
+    *logfile << localMsg.constData() << endl;
+  }
+  if (die) abort();
 }
+
 }  // namespace
 
 namespace Log {

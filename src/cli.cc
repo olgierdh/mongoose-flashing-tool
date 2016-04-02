@@ -1,5 +1,8 @@
 #include "cli.h"
 
+#include <fcntl.h>
+#include <stdio.h>
+
 #include <iostream>
 #include <memory>
 
@@ -7,6 +10,7 @@
 #include <QCoreApplication>
 #include <QFile>
 #include <QFileInfo>
+#include <QSocketNotifier>
 #include <QTimer>
 #include <QSerialPort>
 #include <QSerialPortInfo>
@@ -84,50 +88,47 @@ void CLI::run() {
       port = qf.canonicalFilePath();
     }
 #endif
+    const auto qspi = findSerial(port);
+    if (!qspi.ok()) {
+      cerr << qspi.status() << endl;
+      qApp->exit(1);
+    }
   }
 
+  util::Status r;
+  bool exit = true;
   if (parser_->isSet("probe-ports")) {
-    listPorts();
-    exit_code = 0;
+    r = listPorts();
   } else if (parser_->isSet("probe")) {
-    if (port.isEmpty()) {
-      cerr << "Need --port" << endl
-           << endl;
-      parser_->showHelp(1);
-    }
-    util::Status r = probePort(port);
-    if (!r.ok()) {
-      cerr << r << endl;
-      exit_code = 1;
-    } else {
-      cout << "ok" << endl;
-      exit_code = 0;
-    }
+    r = probePort(port);
   } else if (parser_->isSet("flash")) {
-    if (port.isEmpty()) {
-      cerr << "Need --port" << endl
-           << endl;
-      parser_->showHelp(1);
+    r = flash(port, parser_->value("flash"));
+    if (r.ok() && parser_->isSet("console")) {
+      r = console(port);
+      if (r.ok()) exit = false;
     }
-    util::Status s = flash(port, parser_->value("flash"));
-    if (s.ok()) {
-      cerr << "Success." << endl;
-      exit_code = 0;
-    } else {
-      cerr << s << endl;
-      exit_code = 1;
-    }
+  } else if (parser_->isSet("console")) {
+    r = console(port);
+    if (r.ok()) exit = false;
   } else {
     cerr << "No action specified. " << endl
          << endl;
     parser_->showHelp(1);
   }
-  qApp->exit(exit_code);
+  if (exit) {
+    if (r.ok()) {
+      exit_code = 0;
+    } else {
+      cerr << r << endl;
+      exit_code = 1;
+    }
+    qApp->exit(exit_code);
+  }
 }
 
-void CLI::listPorts() {
+util::Status CLI::listPorts() {
   if (hal_ == nullptr) {
-    return;
+    return util::Status(util::error::INVALID_ARGUMENT, "No platform selected");
   }
   const auto &ports = QSerialPortInfo::availablePorts();
   for (const auto &port : ports) {
@@ -140,15 +141,19 @@ void CLI::listPorts() {
     }
     cout << endl;
   }
+  return util::Status::OK;
 }
 
-util::Status CLI::probePort(const QString &portname) {
+util::Status CLI::probePort(const QString &portName) {
   if (hal_ == nullptr) {
     return util::Status(util::error::INVALID_ARGUMENT, "No platform selected");
   }
+  if (portName == "") {
+    return util::Status(util::error::INVALID_ARGUMENT, "Port not specified");
+  }
   const auto &ports = QSerialPortInfo::availablePorts();
   for (const auto &port : ports) {
-    if (port.systemLocation() != portname) {
+    if (port.systemLocation() != portName) {
       continue;
     }
     return hal_->probe(port);
@@ -156,15 +161,18 @@ util::Status CLI::probePort(const QString &portname) {
   return util::Status(util::error::INVALID_ARGUMENT, "No such port");
 }
 
-util::Status CLI::flash(const QString &portname, const QString &path) {
+util::Status CLI::flash(const QString &portName, const QString &path) {
   if (hal_ == nullptr) {
     return util::Status(util::error::INVALID_ARGUMENT, "No platform selected");
+  }
+  if (portName == "") {
+    return util::Status(util::error::INVALID_ARGUMENT, "Port not specified");
   }
   const auto &ports = QSerialPortInfo::availablePorts();
   QSerialPortInfo info;
   bool found = false;
   for (const auto &port : ports) {
-    if (port.systemLocation() != portname) {
+    if (port.systemLocation() != portName) {
       continue;
     }
     info = port;
@@ -238,6 +246,38 @@ util::Status CLI::flash(const QString &portname, const QString &path) {
   }
   return util::Status::OK;
 }
+
+#ifndef _WIN32
+util::Status CLI::console(const QString &portName) {
+  util::StatusOr<QSerialPort *> ps =
+      connectSerial(portName, config_->value("console-baud-rate").toInt());
+  if (!ps.ok()) {
+    qCritical() << "connectSerial:" << ps.status();
+    return QSP(tr("unable to open %1").arg(portName), ps.status());
+  }
+  QSerialPort *port = ps.ValueOrDie();
+  QFile *cin = new QFile();
+  cin->open(fileno(stdin), QIODevice::ReadOnly);
+  QFile *cout = new QFile();
+  cout->open(fileno(stdout), QIODevice::WriteOnly);
+  QSocketNotifier *qsn =
+      new QSocketNotifier(fileno(stdin), QSocketNotifier::Read, this);
+  fcntl(0, F_SETFL, fcntl(0, F_GETFL, 0) | O_NONBLOCK);
+  connect(port, &QIODevice::readyRead, [port, cout]() {
+    cout->write(port->readAll());
+    cout->flush();
+  });
+  connect(qsn, &QSocketNotifier::activated,
+          [port, cin]() { port->write(cin->readAll()); });
+  return util::Status::OK;
+}
+#else
+// TODO(rojer): Implement console on Windows.
+util::Status CLI::console(const QString &portName) {
+  (void) portName;
+  return QS(util::error::UNIMPLEMENTED, "No console on Windows, sorry.");
+}
+#endif
 
 util::Status CLI::generateID(const QString &filename, const QString &domain) {
   QByteArray bytes = ESP8266::makeIDBlock(domain);

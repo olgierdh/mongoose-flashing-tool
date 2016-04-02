@@ -77,6 +77,9 @@ util::Status initApp(int *argc, char *argv[], Config *config,
   QList<QCommandLineOption> cliOpts;
   cliOpts.append(QCommandLineOption("gui", "Run in GUI mode."));
   cliOpts.append(QCommandLineOption(
+      {"c", "console"},
+      "Console mode, stdin and stdout are forwarded to UART"));
+  cliOpts.append(QCommandLineOption(
       {"p", "platform"},
       "Target device platform. Required. Valid values: esp8266, cc3200.",
       "platform"));

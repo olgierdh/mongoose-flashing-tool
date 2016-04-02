@@ -26,9 +26,10 @@ class CLI : public QObject {
   CLI(Config *config, QCommandLineParser *parser, QObject *parent = 0);
 
  private:
-  void listPorts();
-  util::Status probePort(const QString &portname);
-  util::Status flash(const QString &portname, const QString &path);
+  util::Status listPorts();
+  util::Status probePort(const QString &portName);
+  util::Status flash(const QString &portName, const QString &path);
+  util::Status console(const QString &portName);
   util::Status generateID(const QString &filename, const QString &domain);
   void run();
 

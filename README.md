@@ -1,6 +1,6 @@
 # Flashnchips
 
-Flashnchips is the Smart.js flashing tool. It is designed to be simple, but
+Flashnchips (pronounced as /ˈfæn.(t)si/) is the Smart.js flashing tool. It is designed to be simple, but
 provide advanced options via command-line flags.
 
 ## EP8266

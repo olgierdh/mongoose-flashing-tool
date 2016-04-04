@@ -509,7 +509,15 @@ void MainDialog::writeSerial() {
   if (serial_port_ == nullptr) {
     return;
   }
-  serial_port_->write((ui_.terminalInput->text() + "\r\n").toUtf8());
+  const QString &text = ui_.terminalInput->text();
+  if (text.contains("\n")) {
+    serial_port_->write(":here\r\n");
+    serial_port_->write(text.toUtf8());
+    serial_port_->write("\r\nEOF\r\n");
+  } else {
+    serial_port_->write(text.toUtf8());
+    serial_port_->write("\r\n");
+  }
   if (!ui_.terminalInput->text().isEmpty() &&
       (input_history_.length() == 0 ||
        input_history_.last() != ui_.terminalInput->text())) {

@@ -426,7 +426,21 @@ class FlasherImpl : public Flasher {
 
     emit statusMessage(tr("Flashing successful, booting firmare..."), true);
 
-    return flasher_client.bootFirmware();
+    // So, this is a bit tricky. Rebooting ESP8266 "properly" from software
+    // seems to be impossible due to GPIO strapping: at this point we have
+    // STRAPPING_GPIO0 = 0 and as far as we are aware it's not possible to
+    // perform a reset that will cause strapping bits to be re-initialized.
+    // Jumping to ResetVector or perforing RTC reset (bit 31 in RTC_CTL)
+    // simply gets us back into boot loader.
+    // flasher_client performs a "soft" reboot, which simply jumps to the
+    // routine that loads. This will work even if RTS and DTR are not connected,
+    // but the side effect is that firmware will not be able to reboot properly.
+    // So, what we do is we do both: tell the flasher to boot firmware *and*
+    // tickle RTS as well. Thus, setups that have control lines connected will
+    // get a "proper" hardware reset, while setups that don't will still work.
+    st = flasher_client.bootFirmware();  // Jumps to flash loader routine.
+    rom.rebootIntoFirmware();            // Uses RTS.
+    return st;
   }
 
   util::Status sanityCheckImages(const QMap<ulong, QByteArray> &images,

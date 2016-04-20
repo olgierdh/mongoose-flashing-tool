@@ -326,6 +326,9 @@ class FlasherImpl : public Flasher {
     if (spiffs_image_.length() > 0) {
       r += spiffs_image_.length() + kSPIFFSMetadataSize;
     }
+    for (const QString &f : extra_files_.keys()) {
+      r += extra_files_[f].length();
+    }
     return r;
   }
 

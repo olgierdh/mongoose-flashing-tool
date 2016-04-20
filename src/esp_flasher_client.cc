@@ -146,7 +146,7 @@ util::Status ESPFlasherClient::write(quint32 addr, QByteArray data,
     s.setByteOrder(QDataStream::LittleEndian);
     s >> numWritten;
     emit progress(numWritten);
-    while (numSent - numWritten <= 3072 && numSent < quint32(data.length())) {
+    while (numSent - numWritten <= 5120 && numSent < quint32(data.length())) {
       quint32 toSend = data.length();
       if (toSend > 1024) toSend = 1024;
       qint64 ns = rom_->data_port()->write(data.mid(numSent, toSend));

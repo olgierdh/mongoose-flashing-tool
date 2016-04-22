@@ -225,7 +225,7 @@ MainDialog::MainDialog(Config *config, QWidget *parent)
   });
   connect(ui_.actionHelp, &QAction::triggered, [this]() {
     const QString url =
-        "https://github.com/cesanta/smart.js/blob/master/flashnchips/README.md";
+        "https://github.com/cesanta/iot/blob/master/flashnchips/README.md";
     if (!QDesktopServices::openUrl(QUrl(url))) {
       QMessageBox::warning(this, tr("Error"), tr("Failed to open %1").arg(url));
     }

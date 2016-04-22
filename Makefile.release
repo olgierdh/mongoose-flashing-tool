@@ -76,7 +76,7 @@ $(BIN_DIR)/FNC.exe: $(BIN_DIR)
 	  if [ z$(SIGN) != z ]; then \
 	    osslsigncode sign \
 	      -certs $(SIGN_CERT) -key $(SIGN_KEY) -h sha256 \
-	      -n "Flashnchips, the Smart.js flashing tool" \
+	      -n "Flashnchips, the Mongoose IoT flashing tool" \
 	      -i https://www.cesanta.com/ \
 	      -ts http://tsa.startssl.com/rfc3161 \
 	      -in src/release/FNC.exe -out $@; \

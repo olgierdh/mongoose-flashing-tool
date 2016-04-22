@@ -1,12 +1,12 @@
 # Flashnchips
 
-Flashnchips (also called FnC, pronounced as /ˈfæn.(t)si/) is the Smart.js flashing tool. It is designed to be simple, but
+Flashnchips (also called FnC, pronounced as /ˈfæn.(t)si/) is the Mongoose IoT flashing tool. It is designed to be simple, but
 provide advanced options via command-line flags.
 
 ## EP8266
 
 Flashing ESP8266 repeatedly is easier with additional wiring.
-See [here](https://github.com/cesanta/smart.js/blob/master/smartjs/platforms/esp8266/flashing.md)
+See [here](https://github.com/cesanta/iot/blob/master/smartjs/platforms/esp8266/flashing.md)
 for more details.
 
 ## CC3200

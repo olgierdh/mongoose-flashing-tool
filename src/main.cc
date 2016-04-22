@@ -17,7 +17,7 @@ int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     parser.process(app);
     config.fromCommandLine(parser);
-    app.setApplicationDisplayName("Smart.js flashing tool");
+    app.setApplicationDisplayName("Mongoose IoT flashing tool");
     MainDialog w(&config);
     w.show();
     SigSource *ss = initSignalSource(&w);

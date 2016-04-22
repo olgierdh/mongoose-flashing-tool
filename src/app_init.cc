@@ -71,7 +71,7 @@ util::Status initApp(int *argc, char *argv[], Config *config,
   ESP8266::addOptions(config);
   CC3200::addOptions(config);
 
-  parser->setApplicationDescription("Smart.js flashing tool");
+  parser->setApplicationDescription("Mongoose IoT flashing tool");
   parser->addHelpOption();
   parser->addVersionOption();
   QList<QCommandLineOption> cliOpts;

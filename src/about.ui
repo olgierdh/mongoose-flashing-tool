@@ -60,7 +60,7 @@
      <item>
       <widget class="QLabel" name="nameLabel">
        <property name="text">
-        <string>Smart.js flashing tool</string>
+        <string>Mongoose IoT flashing tool</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignCenter</set>

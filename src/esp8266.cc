@@ -293,7 +293,7 @@ class FlasherImpl : public Flasher {
       qCritical() << st;
       QString msg =
           tr("Failed to talk to bootloader. See <a "
-             "href=\"https://github.com/cesanta/smart.js/blob/master/"
+             "href=\"https://github.com/cesanta/iot/blob/master/"
              "smartjs/platforms/esp8266/flashing.md\">wiring instructions</a>. "
              "Alternatively, put the device into flashing mode manually "
              "and retry now.\n\nError: %1")

@@ -255,7 +255,7 @@
       <item>
        <widget class="QLabel" name="label_2">
         <property name="text">
-         <string>&lt;a href=&quot;https://github.com/cesanta/smart.js&quot;&gt;Smart.js documentation&lt;/a&gt;</string>
+         <string>&lt;a href=&quot;https://github.com/cesanta/iot&quot;&gt;Mongoose IoT documentation&lt;/a&gt;</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -348,7 +348,7 @@
   </action>
   <action name="actionOpenWebsite">
    <property name="text">
-    <string>&amp;Smart.js website</string>
+    <string>&amp;Mongoose IoT website</string>
    </property>
   </action>
   <action name="actionHelp">

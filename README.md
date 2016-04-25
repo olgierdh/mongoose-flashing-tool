@@ -6,7 +6,7 @@ provide advanced options via command-line flags.
 ## EP8266
 
 Flashing ESP8266 repeatedly is easier with additional wiring.
-See [here](https://github.com/cesanta/iot/blob/master/smartjs/platforms/esp8266/flashing.md)
+See [here](https://github.com/cesanta/mongoose-iot/blob/master/fw/platforms/esp8266/flashing.md)
 for more details.
 
 ## CC3200
@@ -25,7 +25,7 @@ Example (ESP8266):
 
 ```json
 {
-  "name": "smartjs",
+  "name": "mg-iot-fw",
   "platform": "esp8266",
   "version": "20160128095944",
   "build_id": "20160128-095944/fnc@043a9d7e.",

@@ -19,7 +19,7 @@
 
 #include <common/util/statusor.h>
 
-// conf taken from ESP8266 smartjs config
+// conf taken from ESP8266 fw config
 #define LOG_PAGE_SIZE 256
 #define FLASH_BLOCK_SIZE (4 * 1024)
 
@@ -55,7 +55,6 @@ class SPIFFS {
   QByteArray image_;
   spiffs fs_;
 
-  // conf taken from ESP8266 smartjs config
   uint8_t spiffs_work_buf_[LOG_PAGE_SIZE * 2];
   uint8_t spiffs_fds_[32 * 4];
 };

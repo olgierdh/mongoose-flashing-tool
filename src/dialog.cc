@@ -206,7 +206,7 @@ MainDialog::MainDialog(Config *config, QWidget *parent)
           &MainDialog::writeSerial);
 
   connect(ui_.actionOpenWebsite, &QAction::triggered, [this]() {
-    const QString url = "https://www.cesanta.com/smartjs";
+    const QString url = "https://www.cesanta.com/products/mongoose-iot";
     if (!QDesktopServices::openUrl(QUrl(url))) {
       QMessageBox::warning(this, tr("Error"), tr("Failed to open %1").arg(url));
     }

@@ -135,12 +135,12 @@ win32 {
 
 macx {
   QMAKE_INFO_PLIST = Info.plist.in
-  ICON = smartjs.icns
+  ICON = images/mg_iot.icns
 }
 
 win32 {
   QMAKE_TARGET_COMPANY = "Cesanta"
-  RC_ICONS = smartjs.ico
+  RC_ICONS = images/mg_iot.ico
 }
 
 # Build info generation.

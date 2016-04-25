@@ -294,9 +294,9 @@ class FlasherImpl : public Flasher {
       QString msg =
           tr("Failed to talk to bootloader. See <a "
              "href=\"https://github.com/cesanta/iot/blob/master/"
-             "smartjs/platforms/esp8266/flashing.md\">wiring instructions</a>. "
-             "Alternatively, put the device into flashing mode manually "
-             "and retry now.\n\nError: %1")
+             "mongoose-iot/platforms/esp8266/flashing.md\">wiring "
+             "instructions</a>. Alternatively, put the device into flashing "
+             "mode manually and retry now.\n\nError: %1")
               .arg(QString::fromUtf8(st.ToString().c_str()));
       int answer =
           prompter_->Prompt(msg, {{tr("Retry"), Prompter::ButtonRole::No},

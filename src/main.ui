@@ -231,7 +231,7 @@
       <item>
        <widget class="QLabel" name="logo">
         <property name="text">
-         <string>&lt;a href=&quot;https://www.cesanta.com/smartjs&quot;&gt;&lt;img src=&quot;:/images/smartjs_logo_small.png&quot;&gt;&lt;/a&gt;</string>
+         <string>&lt;a href=&quot;https://www.cesanta.com/products/mongoose-iot&quot;&gt;&lt;img width=30 height=30 src=&quot;:/images/mg_iot_30.png&quot;&gt;&lt;/a&gt;</string>
         </property>
         <property name="openExternalLinks">
          <bool>true</bool>
@@ -248,14 +248,14 @@
       <item alignment="Qt::AlignRight">
        <widget class="QLabel" name="label">
         <property name="text">
-         <string>© Cesanta, 2015</string>
+         <string>© 2015-2016 Cesanta</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QLabel" name="label_2">
         <property name="text">
-         <string>&lt;a href=&quot;https://github.com/cesanta/iot&quot;&gt;Mongoose IoT documentation&lt;/a&gt;</string>
+         <string>&lt;a href=&quot;https://github.com/cesanta/mongoose-iot&quot;&gt;Mongoose IoT documentation&lt;/a&gt;</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>

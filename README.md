@@ -1,7 +1,7 @@
 # Flashnchips
 
-Flashnchips (also called FnC, pronounced as /ˈfæn.(t)si/) is the Mongoose IoT flashing tool. It is designed to be simple, but
-provide advanced options via command-line flags.
+Flashnchips (also called FnC, pronounced as /ˈfæn.(t)si/) is the Mongoose IoT Platform flashing tool.
+It is designed to be simple, but provide advanced options via command-line flags.
 
 ## EP8266
 

@@ -75,6 +75,8 @@ const char kOpcodeGetStorageInfo = 0x31;
 const char kOpcodeExecFromRAM = 0x32;
 const char kOpcodeSwitchUART2Apps = 0x33;
 
+const qint32 kFlashBlockSize = 4096;
+
 struct VersionInfo {
   quint8 byte1;
   quint8 byte16;
@@ -357,12 +359,12 @@ class FlasherImpl : public Flasher {
                             "value must be string");
       }
       const std::map<std::string, int> size = {
-          {"512", 512},
-          {"1M", 1024},
-          {"2M", 2 * 1024},
-          {"4M", 4 * 1024},
-          {"8M", 8 * 1024},
-          {"16M", 16 * 1024},
+          {"512K", 512 * 1024},
+          {"1M", 1 * 1024 * 1024},
+          {"2M", 2 * 1024 * 1024},
+          {"4M", 4 * 1024 * 1024},
+          {"8M", 8 * 1024 * 1024},
+          {"16M", 16 * 1024 * 1024},
       };
       if (size.find(value.toString().toStdString()) == size.end()) {
         return util::Status(util::error::INVALID_ARGUMENT, "invalid size");
@@ -927,9 +929,10 @@ class FlasherImpl : public Flasher {
     emit statusMessage(tr("Formatting SFLASH file system..."), true);
     QByteArray payload;
     QDataStream ps(&payload, QIODevice::WriteOnly);
-    ps.setByteOrder(QDataStream::LittleEndian);
-    ps << quint8(kOpcodeFormatFlash) << quint32(2) << quint32(size / 4)
-       << quint32(0) << quint32(0) << quint32(2);
+    ps.setByteOrder(QDataStream::BigEndian);  // NB
+    ps << quint8(kOpcodeFormatFlash) << quint32(2)
+       << quint32(size / kFlashBlockSize) << quint32(0) << quint32(0)
+       << quint32(2);
     return sendPacket(port_, payload, 10000);
   }
 
@@ -1002,7 +1005,7 @@ void addOptions(Config *config) {
   QList<QCommandLineOption> opts;
   opts.append(QCommandLineOption(kFormatFailFS,
                                  "Format SFLASH file system before flashing. "
-                                 "Accepted sizes: 512, 1M, 2M, 4M, 8M, 16M.",
+                                 "Accepted sizes: 512K, 1M, 2M, 4M, 8M, 16M.",
                                  "size"));
   config->addOptions(opts);
 }

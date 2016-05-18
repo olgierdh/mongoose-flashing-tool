@@ -69,8 +69,8 @@ CONFIG(cli) {
   TARGET = $${TARGET}-cli
 } else { # GUI
   QT += widgets
-  HEADERS += dialog.h log_viewer.h settings.h
-  SOURCES += dialog.cc log_viewer.cc main.cc settings.cc
+  HEADERS += dialog.h log_viewer.h settings.h wizard/wizard.h
+  SOURCES += dialog.cc log_viewer.cc main.cc settings.cc wizard/wizard.cc
 }
 
 CONFIG(static):CONFIG(unix) {
@@ -116,8 +116,8 @@ unix {
   SOURCES += sigsource_dummy.cc
 }
 
-RESOURCES = blobs.qrc images.qrc
-FORMS = main.ui about.ui log_viewer.ui settings.ui
+RESOURCES = blobs.qrc images.qrc wizard/wizard.qrc
+FORMS = main.ui about.ui log_viewer.ui settings.ui wizard/wizard.ui
 
 # libftdi stuff.
 macx {

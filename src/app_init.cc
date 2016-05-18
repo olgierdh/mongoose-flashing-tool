@@ -76,6 +76,7 @@ util::Status initApp(int *argc, char *argv[], Config *config,
   parser->addVersionOption();
   QList<QCommandLineOption> cliOpts;
   cliOpts.append(QCommandLineOption("gui", "Run in GUI mode."));
+  cliOpts.append(QCommandLineOption("wizard", "Run in Wizard mode."));
   cliOpts.append(QCommandLineOption(
       {"c", "console"},
       "Console mode, stdin and stdout are forwarded to UART"));

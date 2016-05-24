@@ -12,5 +12,6 @@
         <file>img/smartjs_black.png</file>
         <file>img/logo_blue.png</file>
         <file>img/smartjs_grey.png</file>
+        <file>releases.json</file>
     </qresource>
 </RCC>

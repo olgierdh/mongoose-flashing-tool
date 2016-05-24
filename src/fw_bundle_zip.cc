@@ -46,8 +46,9 @@ util::Status ZipFWBundle::loadFile(const QString &zipFileName) {
   qInfo() << "Loading" << zipFileName;
   QByteArray fn = zipFileName.toUtf8().append('\0');  // NUL-terminate.
   mz_bool status = mz_zip_reader_init_file(&zip_, fn.data(), 0);
-  if (!status)
+  if (!status) {
     return QS(util::error::UNAVAILABLE, "mz_zip_reader_init_file failed");
+  }
   qInfo() << mz_zip_reader_get_num_files(&zip_) << "files";
   auto st = loadContents();
   if (!st.ok()) return QSP("failed to load archive contents", st);

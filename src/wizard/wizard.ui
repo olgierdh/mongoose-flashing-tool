@@ -812,7 +812,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>8</number>
+     <number>1</number>
     </property>
     <widget class="QWidget" name="step1">
      <widget class="QLabel" name="s1_label">
@@ -906,8 +906,8 @@
        <rect>
         <x>460</x>
         <y>170</y>
-        <width>221</width>
-        <height>31</height>
+        <width>220</width>
+        <height>30</height>
        </rect>
       </property>
       <property name="autoFillBackground">
@@ -916,6 +916,9 @@
       <property name="styleSheet">
        <string notr="true"/>
       </property>
+      <property name="insertPolicy">
+       <enum>QComboBox::InsertAlphabetically</enum>
+      </property>
      </widget>
      <widget class="QLabel" name="s1_label_3">
       <property name="geometry">
@@ -923,7 +926,7 @@
         <x>460</x>
         <y>130</y>
         <width>180</width>
-        <height>51</height>
+        <height>50</height>
        </rect>
       </property>
       <property name="palette">
@@ -1038,13 +1041,13 @@
      </widget>
     </widget>
     <widget class="QWidget" name="step2">
-     <widget class="QComboBox" name="s2_platfromSel">
+     <widget class="QComboBox" name="platformSelector">
       <property name="geometry">
        <rect>
-        <x>459</x>
+        <x>460</x>
         <y>150</y>
-        <width>221</width>
-        <height>31</height>
+        <width>220</width>
+        <height>30</height>
        </rect>
       </property>
       <property name="autoFillBackground">
@@ -1053,14 +1056,27 @@
       <property name="styleSheet">
        <string notr="true"/>
       </property>
+      <property name="currentText">
+       <string notr="true">ESP8266</string>
+      </property>
+      <item>
+       <property name="text">
+        <string notr="true">ESP8266</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string notr="true">CC3200</string>
+       </property>
+      </item>
      </widget>
      <widget class="QLabel" name="s2_label_12">
       <property name="geometry">
        <rect>
-        <x>459</x>
+        <x>460</x>
         <y>180</y>
-        <width>181</width>
-        <height>51</height>
+        <width>180</width>
+        <height>50</height>
        </rect>
       </property>
       <property name="palette">
@@ -1172,13 +1188,13 @@
        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
       </property>
      </widget>
-     <widget class="QComboBox" name="s2_fwSel">
+     <widget class="QComboBox" name="firmwareSelector">
       <property name="geometry">
        <rect>
-        <x>459</x>
+        <x>460</x>
         <y>220</y>
-        <width>221</width>
-        <height>31</height>
+        <width>220</width>
+        <height>30</height>
        </rect>
       </property>
       <property name="autoFillBackground">
@@ -1186,6 +1202,9 @@
       </property>
       <property name="styleSheet">
        <string notr="true"/>
+      </property>
+      <property name="editable">
+       <bool>true</bool>
       </property>
      </widget>
      <widget class="QLabel" name="s2_label_2">

@@ -6,6 +6,8 @@
 #ifndef CS_FNC_SRC_WIZARD_WIZARD_H_
 #define CS_FNC_SRC_WIZARD_WIZARD_H_
 
+#include <QDebug>
+#include <QJsonArray>
 #include <QMainWindow>
 #include <QSettings>
 #include <QTimer>
@@ -22,17 +24,46 @@ class WizardDialog : public QMainWindow {
  private slots:
   void nextStep();
   void prevStep();
+  void currentStepChanged();
+
   void updatePortList();
 
+  void updateReleaseInfo();
+  void updateFirmwareSelector();
+
  private:
+  /* These correspond to widget indices in the stack. */
+  enum class Step {
+    Begin = 0,
+    FirmwareSelection = 1,
+    Flashing = 2,
+    WiFiConfig = 3,
+    WiFiConnect = 4,
+    CloudRegistration = 5,
+    CloudCredentials = 6,
+    CloudConnect = 7,
+    Finish = 8,
+
+    Invalid = 99,
+  };
+
+  Step currentStep() const;
+
   void closeEvent(QCloseEvent *event);
 
   Config *config_ = nullptr;
   QSettings settings_;
 
-  QTimer port_refresh_timer_;
+  QTimer portRefreshTimer_;
+  QJsonArray releases_;
+
+  QString selectedPort_;
+  QString selectedPlatform_;
+  QString selectedFirmware_;
 
   Ui::WizardWindow ui_;
+
+  friend QDebug &operator<<(QDebug &d, const Step s);
 };
 
 #endif /* CS_FNC_SRC_WIZARD_WIZARD_H_ */

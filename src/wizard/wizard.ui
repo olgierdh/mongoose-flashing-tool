@@ -901,7 +901,7 @@
        <set>Qt::AlignCenter</set>
       </property>
      </widget>
-     <widget class="QComboBox" name="s1_portSel">
+     <widget class="QComboBox" name="portSelector">
       <property name="geometry">
        <rect>
         <x>460</x>

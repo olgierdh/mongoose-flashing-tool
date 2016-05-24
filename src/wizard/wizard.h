@@ -8,6 +8,7 @@
 
 #include <QMainWindow>
 #include <QSettings>
+#include <QTimer>
 
 #include "config.h"
 #include "ui_wizard.h"
@@ -19,14 +20,18 @@ class WizardDialog : public QMainWindow {
   WizardDialog(Config *config, QWidget *parent = nullptr);
 
  private slots:
-   void nextStep();
-   void prevStep();
+  void nextStep();
+  void prevStep();
+  void updatePortList();
 
  private:
   void closeEvent(QCloseEvent *event);
 
   Config *config_ = nullptr;
   QSettings settings_;
+
+  QTimer port_refresh_timer_;
+
   Ui::WizardWindow ui_;
 };
 

@@ -1,6 +1,7 @@
 #include "wizard.h"
 
 #include <QDebug>
+#include <QSerialPortInfo>
 
 namespace {
 
@@ -22,14 +23,17 @@ enum class Step {
 }  // namespace
 
 WizardDialog::WizardDialog(Config *config, QWidget *parent)
-    : QMainWindow(parent),
-      config_(config) {
+    : QMainWindow(parent), config_(config) {
   ui_.setupUi(this);
   restoreGeometry(settings_.value("wizard/geometry").toByteArray());
 
   ui_.steps->setCurrentIndex(static_cast<int>(Step::Begin));
   connect(ui_.prevBtn, &QPushButton::clicked, this, &WizardDialog::prevStep);
   connect(ui_.nextBtn, &QPushButton::clicked, this, &WizardDialog::nextStep);
+
+  port_refresh_timer_.start(1);
+  connect(&port_refresh_timer_, &QTimer::timeout, this,
+          &WizardDialog::updatePortList);
 }
 
 void WizardDialog::nextStep() {
@@ -134,6 +138,35 @@ void WizardDialog::prevStep() {
   qDebug() << static_cast<int>(ci) << "->" << static_cast<int>(ni);
 
   if (ni != Step::Invalid) ui_.steps->setCurrentIndex(static_cast<int>(ni));
+}
+
+void WizardDialog::updatePortList() {
+  QSet<QString> ports;
+  for (const auto &info : QSerialPortInfo::availablePorts()) {
+#ifdef Q_OS_MAC
+    if (info.portName().contains("Bluetooth")) continue;
+#endif
+    ports.insert(info.portName());
+  }
+
+  for (int i = 0; i < ui_.portSelector->count(); i++) {
+    if (ui_.portSelector->itemData(i).type() != QVariant::String) continue;
+    const QString &portName = ui_.portSelector->itemData(i).toString();
+    if (!ports.contains(portName)) {
+      ui_.portSelector->removeItem(i);
+      qDebug() << "Removing port" << portName;
+      i--;
+    } else {
+      ports.remove(portName);
+    }
+  }
+
+  for (const auto &portName : ports) {
+    qDebug() << "Adding port" << portName;
+    ui_.portSelector->addItem(portName, portName);
+  }
+
+  port_refresh_timer_.start(500);
 }
 
 void WizardDialog::closeEvent(QCloseEvent *event) {

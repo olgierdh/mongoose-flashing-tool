@@ -19,7 +19,7 @@ class QSerialPortInfo;
 class HAL {
  public:
   virtual ~HAL(){};
-  virtual util::Status probe(const QSerialPortInfo &) const = 0;
+  virtual util::Status probe() const = 0;
   virtual std::unique_ptr<Flasher> flasher(Prompter *prompter) const = 0;
   virtual std::string name() const = 0;
   virtual util::Status reboot(QSerialPort *) const = 0;

@@ -8,6 +8,7 @@
 
 #include <memory>
 
+#include <QSerialPort>
 #include <QString>
 
 #include <common/util/status.h>
@@ -26,7 +27,7 @@ void addOptions(Config *parser);
 
 QByteArray makeIDBlock(const QString &domain);
 
-std::unique_ptr<HAL> HAL();
+std::unique_ptr<HAL> HAL(QSerialPort *port);
 
 }  // namespace ESP8266
 

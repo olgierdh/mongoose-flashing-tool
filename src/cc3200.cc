@@ -282,7 +282,7 @@ util::Status boot(ftdi_context *ctx) {
 class FlasherImpl : public Flasher {
   Q_OBJECT
  public:
-  FlasherImpl(){};
+  FlasherImpl(QSerialPort *port) : port_(port){};
   util::Status setFirmware(FirmwareBundle *fw) override {
     const auto code = fw->getPartSource(kFWBundleFWPartName);
     if (!code.ok()) return code.status();
@@ -313,12 +313,6 @@ class FlasherImpl : public Flasher {
     }
     qInfo() << fw->buildId() << "code" << image_.length() << "fs"
             << spiffs_image_.length();
-    return util::Status::OK;
-  }
-
-  util::Status setPort(QSerialPort *port) override {
-    QMutexLocker lock(&lock_);
-    port_ = port;
     return util::Status::OK;
   }
 
@@ -948,11 +942,11 @@ class FlasherImpl : public Flasher {
 };
 
 class CC3200HAL : public HAL {
-  util::Status probe(const QSerialPortInfo &port) const override {
-    auto r = connectSerial(port, kSerialSpeed);
-    if (!r.ok()) {
-      return r.status();
-    }
+ public:
+  CC3200HAL(QSerialPort *port) : port_(port) {
+  }
+
+  util::Status probe() const override {
 #ifndef NO_LIBFTDI
     auto ftdi = openFTDI();
     if (!ftdi.ok()) {
@@ -965,13 +959,12 @@ class CC3200HAL : public HAL {
       return st;
     }
 #endif
-    std::unique_ptr<QSerialPort> s(r.ValueOrDie());
-    return doBreak(s.get());
+    return doBreak(port_);
   }
 
   std::unique_ptr<Flasher> flasher(Prompter *prompter) const override {
     (void) prompter;  // TODO(rojer): Add prompts to flasher.
-    return std::move(std::unique_ptr<Flasher>(new FlasherImpl));
+    return std::move(std::unique_ptr<Flasher>(new FlasherImpl(port_)));
   }
 
   std::string name() const override {
@@ -992,12 +985,15 @@ class CC3200HAL : public HAL {
     return boot(ctx.get());
 #endif  // NO_LIBFTDI
   }
+
+ private:
+  QSerialPort *port_;
 };
 
 }  // namespace
 
-std::unique_ptr<::HAL> HAL() {
-  return std::move(std::unique_ptr<::HAL>(new CC3200HAL));
+std::unique_ptr<::HAL> HAL(QSerialPort *port) {
+  return std::move(std::unique_ptr<::HAL>(new CC3200HAL(port)));
 }
 
 void addOptions(Config *config) {

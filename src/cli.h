@@ -9,6 +9,7 @@
 #include <memory>
 
 #include <QObject>
+#include <QSerialPort>
 #include <QString>
 
 #include <common/util/status.h>
@@ -26,16 +27,15 @@ class CLI : public QObject {
   CLI(Config *config, QCommandLineParser *parser, QObject *parent = 0);
 
  private:
-  util::Status listPorts();
-  util::Status probePort(const QString &portName);
-  util::Status flash(const QString &portName, const QString &path);
-  util::Status console(const QString &portName);
+  util::Status flash(const QString &path);
+  util::Status console();
   util::Status generateID(const QString &filename, const QString &domain);
   void run();
 
   Config *config_;
   QCommandLineParser *parser_;
   std::unique_ptr<HAL> hal_;
+  std::unique_ptr<QSerialPort> port_;
   Prompter *prompter_;
 };
 

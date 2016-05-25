@@ -19,7 +19,6 @@
 #include <QFormLayout>
 #include <QMessageBox>
 #include <QNetworkRequest>
-#include <QMutex>
 #include <QScrollBar>
 #include <QSerialPort>
 #include <QSerialPortInfo>
@@ -27,14 +26,12 @@
 #include <QTextCursor>
 #include <QThread>
 #include <QTimer>
-#include <QWaitCondition>
 #include <QUrl>
 
 #include "cc3200.h"
 #include "config.h"
 #include "esp8266.h"
 #include "flasher.h"
-#include "fw_bundle.h"
 #include "log.h"
 #include "log_viewer.h"
 #include "serial.h"
@@ -57,42 +54,10 @@ const int kDefaultConsoleBaudRate = 115200;
 
 }  // namespace
 
-class PrompterImpl : public Prompter {
-  Q_OBJECT
- public:
-  PrompterImpl(QObject *parent) : Prompter(parent) {
-  }
-  virtual ~PrompterImpl() {
-  }
-
-  int Prompt(QString text, QList<QPair<QString, ButtonRole>> buttons) override {
-    QMutexLocker l(&lock_);
-    emit showPrompt(text, buttons);
-    wc_.wait(&lock_);
-    return clicked_button_;
-  }
-
-signals:
-  void showPrompt(QString text,
-                  QList<QPair<QString, Prompter::ButtonRole>> buttons);
-
- public slots:
-
-  void showPromptResult(int clicked_button) {
-    QMutexLocker l(&lock_);
-    clicked_button_ = clicked_button;
-    wc_.wakeOne();
-  }
-
- private:
-  QMutex lock_;
-  QWaitCondition wc_;
-  int clicked_button_;
-};
-
 MainDialog::MainDialog(Config *config, QWidget *parent)
     : QMainWindow(parent),
       config_(config),
+      prompter_(this),
       settingsDlg_(config->options(), this) {
   ui_.setupUi(this);
 
@@ -120,7 +85,7 @@ MainDialog::MainDialog(Config *config, QWidget *parent)
   }
 
   net_mgr_.updateConfigurations();
-  resetHAL();
+  platformChanged();
   ui_.progressBar->hide();
   ui_.statusMessage->hide();
 
@@ -178,7 +143,7 @@ MainDialog::MainDialog(Config *config, QWidget *parent)
           });
 
   connect(ui_.platformSelector, &QComboBox::currentTextChanged, this,
-          &MainDialog::resetHAL);
+          &MainDialog::platformChanged);
   connect(ui_.platformSelector, &QComboBox::currentTextChanged,
           [this](QString platform) {
             settings_.setValue("selectedPlatform", platform);
@@ -246,10 +211,9 @@ MainDialog::MainDialog(Config *config, QWidget *parent)
     updateConfig(opt.names()[0]);
   }
 
-  prompter_ = new PrompterImpl(this);
-  connect(prompter_, &PrompterImpl::showPrompt, this, &MainDialog::showPrompt);
-  connect(this, &MainDialog::showPromptResult, prompter_,
-          &PrompterImpl::showPromptResult);
+  connect(&prompter_, &GUIPrompter::showPrompt, this, &MainDialog::showPrompt);
+  connect(this, &MainDialog::showPromptResult, &prompter_,
+          &GUIPrompter::showPromptResult);
 
   ui_.versionLabel->setText(
       tr("Build: %1 %2").arg(qApp->applicationVersion()).arg(build_id));
@@ -288,17 +252,8 @@ void MainDialog::enableControlsForCurrentState() {
   }
 }
 
-void MainDialog::resetHAL(QString name) {
-  if (name.isEmpty()) {
-    name = ui_.platformSelector->currentText();
-  }
-  if (name == "ESP8266") {
-    hal_ = ESP8266::HAL();
-  } else if (name == "CC3200") {
-    hal_ = CC3200::HAL();
-  } else {
-    qFatal("Unknown platform: %s", name.toStdString().c_str());
-  }
+void MainDialog::platformChanged() {
+  hal_.reset();
   {
     const QString selectedPlatform = ui_.platformSelector->currentText();
     const QString fwForPlatform =
@@ -310,29 +265,7 @@ void MainDialog::resetHAL(QString name) {
 
 void MainDialog::showPrompt(
     QString text, QList<QPair<QString, Prompter::ButtonRole>> buttons) {
-  QMessageBox mb;
-  mb.setText(text);
-  QMap<QAbstractButton *, int> b2i;
-  int i = 0;
-  for (const auto &bd : buttons) {
-    QMessageBox::ButtonRole role = QMessageBox::YesRole;
-    switch (bd.second) {
-      case Prompter::ButtonRole::Yes:
-        role = QMessageBox::YesRole;
-        break;
-      case Prompter::ButtonRole::No:
-        role = QMessageBox::NoRole;
-        break;
-      case Prompter::ButtonRole::Reject:
-        role = QMessageBox::RejectRole;
-        break;
-    }
-    QAbstractButton *b = mb.addButton(bd.first, role);
-    b2i[b] = i++;
-  }
-  mb.exec();
-  QAbstractButton *clicked = mb.clickedButton();
-  emit showPromptResult(b2i.contains(clicked) ? b2i[clicked] : -1);
+  emit showPromptResult(prompter_.doShowPrompt(text, buttons));
 }
 
 util::Status MainDialog::openSerial() {
@@ -537,9 +470,7 @@ void MainDialog::reboot() {
     qDebug() << "Attempt to reboot without an open port!";
     return;
   }
-  if (hal_ == nullptr) {
-    qFatal("No HAL instance");
-  }
+  if (hal_ == nullptr) createHAL();
   disconnectTerminal();
   util::Status st = hal_->reboot(serial_port_.get());
   connectDisconnectTerminal();
@@ -679,19 +610,29 @@ void MainDialog::setStatusMessage(MsgType level, const QString &msg) {
   if (!ui_.statusMessage->isVisible()) emit ui_.statusMessage->show();
 }
 
+void MainDialog::createHAL() {
+  const QString platform = ui_.platformSelector->currentText();
+  if (platform == "ESP8266") {
+    hal_ = ESP8266::HAL(serial_port_.get());
+  } else if (platform == "CC3200") {
+    hal_ = CC3200::HAL(serial_port_.get());
+  } else {
+    qFatal("Unknown platform: %s", platform.toStdString().c_str());
+  }
+}
+
 void MainDialog::downloadAndFlashFirmware(const QString &url) {
   prevState_ = state_;
   setState(Downloading);
   setStatusMessage(MsgType::INFO, "Downloading...");
-  url_ = url;
-  QNetworkRequest req(url_);
-  if (!etag_.isEmpty()) {
-    req.setRawHeader(QByteArray("If-None-Match"), etag_);
+  if (fd_ == nullptr || fd_->url() != url) {
+    fd_.reset(new FileDownloader(url));
+    connect(fd_.get(), &FileDownloader::progress, this,
+            &MainDialog::downloadProgress);
+    connect(fd_.get(), &FileDownloader::finished, this,
+            &MainDialog::downloadFinished);
   }
-  reply_ = nam_.get(req);
-  connect(reply_, &QNetworkReply::downloadProgress, this,
-          &MainDialog::downloadProgress);
-  connect(reply_, &QNetworkReply::finished, this, &MainDialog::httpDone);
+  fd_->start();
 }
 
 void MainDialog::downloadProgress(qint64 recd, qint64 total) {
@@ -705,90 +646,21 @@ void MainDialog::downloadProgress(qint64 recd, qint64 total) {
   }
 }
 
-void MainDialog::httpDone() {
-  bool flash = false;
-  qDebug() << "httpDone";
+void MainDialog::downloadFinished() {
+  qDebug() << "downloadFinished";
   ui_.progressBar->setValue(0);
   ui_.progressBar->hide();
-  QVariant redir =
-      reply_->attribute(QNetworkRequest::RedirectionTargetAttribute);
-  do {
-    if (reply_->error()) {
-      setStatusMessage(MsgType::ERROR, reply_->errorString());
-      ui_.progressBar->hide();
-      break;
-    }
-    if (!redir.isNull()) {
-      reply_->deleteLater();
-      url_ = url_.resolved(redir.toUrl());
-      qDebug() << "Redirected to" << url_;
-      QNetworkRequest req(url_);
-      reply_ = nam_.get(req);
-      connect(reply_, &QNetworkReply::downloadProgress, this,
-              &MainDialog::downloadProgress);
-      connect(reply_, &QNetworkReply::finished, this, &MainDialog::httpDone);
-      return;
-    }
-    int code =
-        reply_->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-    if (code == 304 /* Not Modified */) {
-      setStatusMessage(MsgType::INFO, tr("Not modified"));
-      flash = true;
-      break;
-    }
-    setStatusMessage(MsgType::INFO, tr("Download finished, %1 bytes")
-                                        .arg(reply_->bytesAvailable()));
-    tempFile_.reset(new QTemporaryFile());
-    if (!tempFile_->open()) {
-      setStatusMessage(MsgType::ERROR, tr("Failed to create temp file: %1")
-                                           .arg(tempFile_->errorString()));
-      break;
-    }
-    QByteArray data = reply_->readAll();
-    if (tempFile_->write(data) != data.length() || !tempFile_->flush()) {
-      setStatusMessage(MsgType::ERROR, tr("Failed to write data: %1")
-                                           .arg(tempFile_->errorString()));
-      break;
-    }
-    etag_ = reply_->rawHeader("ETag");
-    if (etag_.startsWith("W/")) etag_.clear();
-    qDebug() << "Wrote" << data.length() << "bytes to" << tempFile_->fileName()
-             << "ETag" << etag_;
-    flash = true;
-  } while (false);
   setState(prevState_);
-  reply_->deleteLater();
-  if (flash) flashFirmware(tempFile_->fileName());
+  if (fd_->status().ok()) flashFirmware(fd_->fileName());
 }
 
 void MainDialog::flashFirmware(const QString &file) {
-  // Check if the terminal is scrolled down to the bottom before showing
-  // progress bar, so we can scroll it back again after we're done.
-  auto *scroll = ui_.terminal->verticalScrollBar();
-  scroll_after_flashing_ = scroll->value() == scroll->maximum();
-  if (hal_ == nullptr) {
-    qFatal("No HAL instance");
-  }
-  std::unique_ptr<Flasher> f(hal_->flasher(prompter_));
-  util::Status s = f->setOptionsFromConfig(*config_);
-  if (!s.ok()) {
-    setStatusMessage(MsgType::ERROR, tr("Invalid command line flag setting: ") +
-                                         s.ToString().c_str());
-    return;
-  }
   if (!loadFirmwareBundle(file).ok()) {
     // Error already shown by loadFirmwareBundle.
     return;
   }
-  s = f->setFirmware(fw_.get());
-  if (!s.ok()) {
-    setStatusMessage(MsgType::ERROR, s.ToString().c_str());
-    return;
-  }
-  if (state_ == Terminal) {
-    disconnectTerminal();
-  }
-  s = openSerial();
+  if (state_ == Terminal) disconnectTerminal();
+  util::Status s = openSerial();
   if (!s.ok()) {
     setStatusMessage(MsgType::ERROR, s.ToString().c_str());
     return;
@@ -798,12 +670,24 @@ void MainDialog::flashFirmware(const QString &file) {
     return;
   }
   setState(Flashing);
-  s = f->setPort(serial_port_.get());
+  // Check if the terminal is scrolled down to the bottom before showing
+  // progress bar, so we can scroll it back again after we're done.
+  auto *scroll = ui_.terminal->verticalScrollBar();
+  scroll_after_flashing_ = scroll->value() == scroll->maximum();
+
+  if (hal_ == nullptr) createHAL();
+  std::unique_ptr<Flasher> f(hal_->flasher(&prompter_));
+  s = f->setOptionsFromConfig(*config_);
+  if (!s.ok()) {
+    setStatusMessage(MsgType::ERROR, tr("Invalid command line flag setting: ") +
+                                         s.ToString().c_str());
+    return;
+  }
+  s = f->setFirmware(fw_.get());
   if (!s.ok()) {
     setStatusMessage(MsgType::ERROR, s.ToString().c_str());
     return;
   }
-
   ui_.progressBar->show();
   ui_.progressBar->setRange(0, f->totalBytes());
   connect(f.get(), &Flasher::progress, ui_.progressBar,
@@ -1089,5 +973,3 @@ void MainDialog::updateConfig(const QString &name) {
     ui_.terminal->setMaximumBlockCount(n);
   }
 }
-
-#include "dialog.moc"

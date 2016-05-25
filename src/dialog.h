@@ -14,21 +14,19 @@
 #include <QMainWindow>
 #include <QMessageBox>
 #include <QMultiMap>
-#include <QNetworkAccessManager>
 #include <QNetworkConfigurationManager>
-#include <QNetworkReply>
 #include <QPair>
 #include <QSerialPort>
 #include <QSettings>
 #include <QString>
 #include <QStringList>
-#include <QTemporaryFile>
 #include <QThread>
-#include <QUrl>
 
 #include <common/util/statusor.h>
 
+#include "file_downloader.h"
 #include "fw_bundle.h"
+#include "gui_prompter.h"
 #include "hal.h"
 #include "log_viewer.h"
 #include "prompter.h"
@@ -36,7 +34,6 @@
 #include "ui_main.h"
 
 class Config;
-class PrompterImpl;
 class QAction;
 class QEvent;
 class QSerialPort;
@@ -78,7 +75,7 @@ class MainDialog : public QMainWindow {
   void reboot();
   void configureWiFi();
   void uploadFile();
-  void resetHAL(QString name = QString());
+  void platformChanged();
 
   util::Status openSerial();
   util::Status closeSerial();
@@ -99,7 +96,7 @@ class MainDialog : public QMainWindow {
   void truncateConsoleLog();
 
   void downloadProgress(qint64 recd, qint64 total);
-  void httpDone();
+  void downloadFinished();
 
 signals:
   void gotPrompt();
@@ -112,6 +109,7 @@ signals:
   enum class MsgType { OK, INFO, ERROR };
   void setStatusMessage(MsgType level, const QString &msg);
 
+  void createHAL();
   void downloadAndFlashFirmware(const QString &url);
   void flashFirmware(const QString &file);
   util::Status loadFirmwareBundle(const QString &fileName);
@@ -133,18 +131,13 @@ signals:
   std::unique_ptr<HAL> hal_;
   bool scroll_after_flashing_ = false;
   std::unique_ptr<QFile> console_log_;
-  PrompterImpl *prompter_;
+  GUIPrompter prompter_;
   SettingsDialog settingsDlg_;
   std::unique_ptr<LogViewer> log_viewer_;
 
   QNetworkConfigurationManager net_mgr_;
 
-  // File download state.
-  QUrl url_;
-  QNetworkAccessManager nam_;
-  std::unique_ptr<QTemporaryFile> tempFile_;
-  QByteArray etag_;
-  QNetworkReply *reply_;
+  std::unique_ptr<FileDownloader> fd_;
   State prevState_;
 
   State state_ = NoPortSelected;

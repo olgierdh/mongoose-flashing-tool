@@ -35,6 +35,7 @@ HEADERS += \
   esp8266.h \
   esp_flasher_client.h \
   esp_rom_client.h \
+  file_downloader.h \
   flasher.h \
   fs.h \
   fw_bundle.h \
@@ -54,6 +55,7 @@ SOURCES += \
   esp8266.cc \
   esp_flasher_client.cc \
   esp_rom_client.cc \
+  file_downloader.cc \
   flasher.cc \
   fs.cc \
   fw_bundle.cc \
@@ -69,8 +71,8 @@ CONFIG(cli) {
   TARGET = $${TARGET}-cli
 } else { # GUI
   QT += widgets
-  HEADERS += dialog.h log_viewer.h settings.h wizard/wizard.h
-  SOURCES += dialog.cc log_viewer.cc main.cc settings.cc wizard/wizard.cc
+  HEADERS += dialog.h gui_prompter.h log_viewer.h settings.h wizard/wizard.h
+  SOURCES += dialog.cc gui_prompter.cc log_viewer.cc main.cc settings.cc wizard/wizard.cc
 }
 
 CONFIG(static):CONFIG(unix) {

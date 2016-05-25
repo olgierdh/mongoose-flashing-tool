@@ -46,6 +46,7 @@ const char kSPIFFSSizeOption[] = "esp8266-spiffs-size";
 const char kDefaultSPIFFSSize[] = "65536";
 const char kNoMinimizeWritesOption[] = "esp8266-no-minimize-writes";
 
+const int kDefaultROMBaudRate = 115200;
 const int kDefaultFlashBaudRate = 230400;
 /* Last 16K of flash are reserved for system params. */
 const quint32 kSystemParamsAreaSize = 16 * 1024;
@@ -53,7 +54,8 @@ const quint32 kSystemParamsAreaSize = 16 * 1024;
 class FlasherImpl : public Flasher {
   Q_OBJECT
  public:
-  FlasherImpl(Prompter *prompter) : prompter_(prompter) {
+  FlasherImpl(QSerialPort *port, Prompter *prompter)
+      : port_(port), prompter_(prompter) {
   }
 
   util::Status setOption(const QString &name, const QVariant &value) override {
@@ -203,12 +205,6 @@ class FlasherImpl : public Flasher {
     return util::Status::OK;
   }
 
-  util::Status setPort(QSerialPort *port) override {
-    QMutexLocker lock(&lock_);
-    port_ = port;
-    return util::Status::OK;
-  }
-
   int totalBytes() const override {
     QMutexLocker lock(&lock_);
     int r = 0;
@@ -241,7 +237,7 @@ class FlasherImpl : public Flasher {
             util::error::NOT_FOUND,
             tr("Port %1 not found").arg(flashing_port_name_).toStdString());
       }
-      auto serial = connectSerial(info, 115200);
+      auto serial = connectSerial(info, kDefaultROMBaudRate);
       if (!serial.ok()) {
         return util::Status(
             util::error::UNKNOWN,
@@ -260,7 +256,6 @@ class FlasherImpl : public Flasher {
     QMutexLocker lock(&lock_);
 
     util::Status st = runLocked();
-
     if (!st.ok()) {
       emit done(QString::fromStdString(st.error_message()), false);
       return;
@@ -631,11 +626,11 @@ class FlasherImpl : public Flasher {
     return util::Status::OK;
   }
 
+  QSerialPort *port_;
   Prompter *prompter_;
 
   mutable QMutex lock_;
   QMap<ulong, QByteArray> blobs_;
-  QSerialPort *port_;
   std::unique_ptr<ESPROMClient> rom_;
   int progress_ = 0;
   quint32 flashSize_ = 0;
@@ -650,14 +645,12 @@ class FlasherImpl : public Flasher {
 };
 
 class ESP8266HAL : public HAL {
-  util::Status probe(const QSerialPortInfo &port) const override {
-    auto r = connectSerial(port, 9600);
-    if (!r.ok()) {
-      return r.status();
-    }
-    std::unique_ptr<QSerialPort> s(r.ValueOrDie());
+ public:
+  ESP8266HAL(QSerialPort *port) : port_(port) {
+  }
 
-    ESPROMClient rom(s.get(), s.get());
+  util::Status probe() const override {
+    ESPROMClient rom(port_, port_);
 
     if (!rom.connect().ok()) {
       return util::Status(util::error::UNAVAILABLE,
@@ -677,7 +670,8 @@ class ESP8266HAL : public HAL {
   }
 
   std::unique_ptr<Flasher> flasher(Prompter *prompter) const override {
-    return std::move(std::unique_ptr<Flasher>(new FlasherImpl(prompter)));
+    return std::move(
+        std::unique_ptr<Flasher>(new FlasherImpl(port_, prompter)));
   }
 
   std::string name() const override {
@@ -692,12 +686,15 @@ class ESP8266HAL : public HAL {
     if (!st.ok()) return QSP("failed to communicate to ROM", st);
     return rom.rebootIntoFirmware();
   }
+
+ private:
+  QSerialPort *port_;
 };
 
 }  // namespace
 
-std::unique_ptr<::HAL> HAL() {
-  return std::move(std::unique_ptr<::HAL>(new ESP8266HAL));
+std::unique_ptr<::HAL> HAL(QSerialPort *port) {
+  return std::move(std::unique_ptr<::HAL>(new ESP8266HAL(port)));
 }
 
 namespace {

@@ -8,13 +8,15 @@
 
 #include <memory>
 
+#include <QSerialPort>
+
 #include "hal.h"
 
 class Config;
 
 namespace CC3200 {
 
-std::unique_ptr<HAL> HAL();
+std::unique_ptr<HAL> HAL(QSerialPort *port);
 
 void addOptions(Config *config);
 

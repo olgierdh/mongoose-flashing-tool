@@ -31,10 +31,6 @@ class Flasher : public QObject {
   // Sets the firmware bundle to be flashed. Implementation should perform any
   // platform-specific validation necessary and return OK if the fw is good.
   virtual util::Status setFirmware(FirmwareBundle *fw) = 0;
-  // setPort tells which port to use for flashing. port must not be destroyed
-  // between calling run() and getting back done() signal. Caller retains port
-  // ownership.
-  virtual util::Status setPort(QSerialPort *port) = 0;
   // totalBytes should return the number of bytes in the loaded firmware.
   // It is used to track the progress of flashing.
   virtual int totalBytes() const = 0;

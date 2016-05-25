@@ -812,7 +812,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>1</number>
+     <number>0</number>
     </property>
     <widget class="QWidget" name="step1">
      <widget class="QLabel" name="s1_label">
@@ -905,7 +905,7 @@
       <property name="geometry">
        <rect>
         <x>460</x>
-        <y>170</y>
+        <y>220</y>
         <width>220</width>
         <height>30</height>
        </rect>
@@ -924,7 +924,7 @@
       <property name="geometry">
        <rect>
         <x>460</x>
-        <y>130</y>
+        <y>180</y>
         <width>180</width>
         <height>50</height>
        </rect>
@@ -983,7 +983,7 @@
       <property name="geometry">
        <rect>
         <x>460</x>
-        <y>200</y>
+        <y>250</y>
         <width>250</width>
         <height>50</height>
        </rect>
@@ -1039,8 +1039,6 @@
        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
       </property>
      </widget>
-    </widget>
-    <widget class="QWidget" name="step2">
      <widget class="QComboBox" name="platformSelector">
       <property name="geometry">
        <rect>
@@ -1070,6 +1068,67 @@
        </property>
       </item>
      </widget>
+     <widget class="QLabel" name="s1_label_5">
+      <property name="geometry">
+       <rect>
+        <x>460</x>
+        <y>110</y>
+        <width>180</width>
+        <height>50</height>
+       </rect>
+      </property>
+      <property name="palette">
+       <palette>
+        <active>
+         <colorrole role="WindowText">
+          <brush brushstyle="SolidPattern">
+           <color alpha="255">
+            <red>255</red>
+            <green>255</green>
+            <blue>255</blue>
+           </color>
+          </brush>
+         </colorrole>
+        </active>
+        <inactive>
+         <colorrole role="WindowText">
+          <brush brushstyle="SolidPattern">
+           <color alpha="255">
+            <red>255</red>
+            <green>255</green>
+            <blue>255</blue>
+           </color>
+          </brush>
+         </colorrole>
+        </inactive>
+        <disabled>
+         <colorrole role="WindowText">
+          <brush brushstyle="SolidPattern">
+           <color alpha="255">
+            <red>120</red>
+            <green>120</green>
+            <blue>120</blue>
+           </color>
+          </brush>
+         </colorrole>
+        </disabled>
+       </palette>
+      </property>
+      <property name="font">
+       <font>
+        <family>Roboto Light</family>
+        <pointsize>12</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Platform:</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="step2">
      <widget class="QLabel" name="s2_label_12">
       <property name="geometry">
        <rect>
@@ -1124,65 +1183,6 @@
       </property>
       <property name="text">
        <string>Firmware release:</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-      </property>
-     </widget>
-     <widget class="QLabel" name="s2_label_3">
-      <property name="geometry">
-       <rect>
-        <x>459</x>
-        <y>110</y>
-        <width>181</width>
-        <height>51</height>
-       </rect>
-      </property>
-      <property name="palette">
-       <palette>
-        <active>
-         <colorrole role="WindowText">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>255</red>
-            <green>255</green>
-            <blue>255</blue>
-           </color>
-          </brush>
-         </colorrole>
-        </active>
-        <inactive>
-         <colorrole role="WindowText">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>255</red>
-            <green>255</green>
-            <blue>255</blue>
-           </color>
-          </brush>
-         </colorrole>
-        </inactive>
-        <disabled>
-         <colorrole role="WindowText">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>120</red>
-            <green>120</green>
-            <blue>120</blue>
-           </color>
-          </brush>
-         </colorrole>
-        </disabled>
-       </palette>
-      </property>
-      <property name="font">
-       <font>
-        <family>Roboto Light</family>
-        <pointsize>12</pointsize>
-       </font>
-      </property>
-      <property name="text">
-       <string>Platform:</string>
       </property>
       <property name="alignment">
        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
@@ -1295,7 +1295,7 @@
      </widget>
     </widget>
     <widget class="QWidget" name="step2_1">
-     <widget class="QLabel" name="s2_1_label_2">
+     <widget class="QLabel" name="s2_1_title">
       <property name="geometry">
        <rect>
         <x>0</x>
@@ -1350,13 +1350,13 @@
        </font>
       </property>
       <property name="text">
-       <string>FLASHING ...</string>
+       <string>DOWNLOADING ...</string>
       </property>
       <property name="alignment">
        <set>Qt::AlignCenter</set>
       </property>
      </widget>
-     <widget class="QLabel" name="s2_1_label_12">
+     <widget class="QLabel" name="s2_1_progress">
       <property name="geometry">
        <rect>
         <x>510</x>
@@ -1410,7 +1410,7 @@
        </font>
       </property>
       <property name="text">
-       <string>25%</string>
+       <string>0%</string>
       </property>
       <property name="alignment">
        <set>Qt::AlignCenter</set>
@@ -1466,10 +1466,10 @@
        <set>Qt::AlignCenter</set>
       </property>
      </widget>
-     <zorder>s2_1_label_2</zorder>
+     <zorder>s2_1_title</zorder>
      <zorder>s2_1_label</zorder>
      <zorder>s2_1_label_3</zorder>
-     <zorder>s2_1_label_12</zorder>
+     <zorder>s2_1_progress</zorder>
     </widget>
     <widget class="QWidget" name="step3">
      <widget class="QLabel" name="s3_label_4">

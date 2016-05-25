@@ -85,10 +85,6 @@ util::Status initApp(int *argc, char *argv[], Config *config,
       "Target device platform. Required. Valid values: esp8266, cc3200.",
       "platform"));
   cliOpts.append(QCommandLineOption("port", "Serial port to use.", "port"));
-  cliOpts.append(QCommandLineOption(
-      {"l", "probe-ports"},
-      "Print the list of available serial ports and try detect device "
-      "presence on each of them."));
   cliOpts.append(
       QCommandLineOption("probe", "Check device presence on a given port."));
   cliOpts.append(QCommandLineOption(

@@ -12,6 +12,7 @@
 #include "esp8266.h"
 #include "flasher.h"
 #include "fw_bundle.h"
+#include "fw_client.h"
 #include "serial.h"
 #include "status_qt.h"
 
@@ -109,11 +110,7 @@ void WizardDialog::nextStep() {
       }
       qInfo() << "Selected platform:" << selectedPlatform_
               << "fw:" << selectedFirmwareURL_;
-      if (selectedFirmwareURL_.scheme() != "") {
-        ni = Step::Flashing;
-      } else {
-        QMessageBox::critical(this, tr("Error"), tr("Invalid firmware URL"));
-      }
+      ni = Step::Flashing;
       break;
     }
     case Step::Flashing: {
@@ -172,7 +169,12 @@ void WizardDialog::currentStepChanged() {
     QTimer::singleShot(1, this, &WizardDialog::updateFirmwareSelector);
   }
   if (ci == Step::Flashing) {
-    QTimer::singleShot(1, this, &WizardDialog::startFirmwareDownload);
+    fwc_.reset();
+    if (selectedFirmwareURL_.scheme() == "") {
+      flashFirmware(selectedFirmwareURL_.toString());
+    } else {
+      startFirmwareDownload(selectedFirmwareURL_);
+    }
     ui_.nextBtn->setEnabled(false);
   }
   if (ci == Step::Finish) {
@@ -307,10 +309,10 @@ void WizardDialog::updateFirmwareSelector() {
   }
 }
 
-void WizardDialog::startFirmwareDownload() {
+void WizardDialog::startFirmwareDownload(const QUrl &url) {
   ui_.s2_1_title->setText(tr("DOWNLOADING ..."));
-  if (fd_ == nullptr || fd_->url() != selectedFirmwareURL_) {
-    fd_.reset(new FileDownloader(selectedFirmwareURL_));
+  if (fd_ == nullptr || fd_->url() != url) {
+    fd_.reset(new FileDownloader(url));
     connect(fd_.get(), &FileDownloader::progress, this,
             &WizardDialog::downloadProgress);
     connect(fd_.get(), &FileDownloader::finished, this,
@@ -322,6 +324,7 @@ void WizardDialog::startFirmwareDownload() {
 void WizardDialog::downloadProgress(qint64 recd, qint64 total) {
   qDebug() << "downloadProgress" << recd << total;
   if (currentStep() != Step::Flashing) return;
+  ui_.s2_1_progress->show();
   const qint64 progressPct = recd * 100 / total;
   ui_.s2_1_progress->setText(tr("%1%").arg(progressPct));
 }
@@ -334,13 +337,13 @@ void WizardDialog::downloadFinished() {
     prevStep();
     return;
   }
+  ui_.s2_1_progress->hide();
   flashFirmware(fd_->fileName());
 }
 
 void WizardDialog::flashFirmware(const QString &fileName) {
   qInfo() << "Loading" << fileName;
   ui_.s2_1_title->setText(tr("LOADING ..."));
-  ui_.s2_1_progress->setText("0%");
 
   auto fwbs = NewZipFWBundle(fileName);
   if (!fwbs.ok()) {
@@ -401,6 +404,7 @@ void WizardDialog::flashFirmware(const QString &fileName) {
 void WizardDialog::flashingProgress(int bytesWritten) {
   qDebug() << "Flashed" << bytesWritten << "of" << bytesToFlash_;
   if (currentStep() != Step::Flashing) return;
+  ui_.s2_1_progress->show();
   const int progressPct = bytesWritten * 100 / bytesToFlash_;
   ui_.s2_1_progress->setText(tr("%1%").arg(progressPct));
 }
@@ -408,11 +412,38 @@ void WizardDialog::flashingProgress(int bytesWritten) {
 void WizardDialog::flashingDone(QString msg, bool success) {
   worker_->quit();
   ui_.prevBtn->setEnabled(true);
+  ui_.s2_1_progress->hide();
   if (success) {
-    ui_.nextBtn->setEnabled(true);
+    ui_.s2_1_title->setText(tr("FIRMWARE IS BOOTING ..."));
+    fwc_.reset(new FWClient(port_.get()));
+    connect(fwc_.get(), &FWClient::connectResult, this,
+            &WizardDialog::fwConnectResult);
+    fwc_->doConnect();
   } else {
     QMessageBox::critical(this, tr("Error"), tr("Flashing error: %1").arg(msg));
+  }
+}
+
+void WizardDialog::fwConnectResult(util::Status st) {
+  if (!st.ok()) {
+    QMessageBox::critical(
+        this, tr("Error"),
+        tr("Failed to communicate to firmware: %1").arg(st.ToString().c_str()));
     return;
+  }
+  ui_.s2_1_title->setText(tr("CONNECTED"));
+  ui_.nextBtn->setEnabled(true);
+  connect(fwc_.get(), &FWClient::wifiScanResult, this,
+          &WizardDialog::updateWiFiNetworks);
+  fwc_->doWifiScan();
+}
+
+void WizardDialog::updateWiFiNetworks(QStringList networks) {
+  qInfo() << "WiFi networks:" << networks;
+  ui_.s3_wifiName->clear();
+  networks.sort();
+  for (const QString &name : networks) {
+    ui_.s3_wifiName->addItem(name, name);
   }
 }
 

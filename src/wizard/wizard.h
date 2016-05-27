@@ -16,6 +16,7 @@
 #include <QUrl>
 
 #include "file_downloader.h"
+#include "fw_client.h"
 #include "gui_prompter.h"
 #include "hal.h"
 #include "config.h"
@@ -37,7 +38,7 @@ class WizardDialog : public QMainWindow {
   void updateReleaseInfo();
   void updateFirmwareSelector();
 
-  void startFirmwareDownload();
+  void startFirmwareDownload(const QUrl &url);
   void downloadProgress(qint64 recd, qint64 total);
   void downloadFinished();
 
@@ -47,6 +48,9 @@ class WizardDialog : public QMainWindow {
   void flashFirmware(const QString &fileName);
   void flashingProgress(int bytesWritten);
   void flashingDone(QString msg, bool success);
+
+  void fwConnectResult(util::Status st);
+  void updateWiFiNetworks(QStringList networks);
 
 signals:
   void showPromptResult(int clicked_button);
@@ -82,6 +86,7 @@ signals:
 
   QJsonArray releases_;
   std::unique_ptr<FileDownloader> fd_;
+  std::unique_ptr<FWClient> fwc_;
 
   QString selectedPlatform_;
   QUrl selectedFirmwareURL_;

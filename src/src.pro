@@ -39,6 +39,7 @@ HEADERS += \
   flasher.h \
   fs.h \
   fw_bundle.h \
+  fw_client.h \
   log.h \
   prompter.h \
   serial.h \
@@ -60,6 +61,7 @@ SOURCES += \
   fs.cc \
   fw_bundle.cc \
   fw_bundle_zip.cc \
+  fw_client.cc \
   log.cc \
   serial.cc \
   slip.cc \

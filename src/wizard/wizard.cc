@@ -119,6 +119,9 @@ void WizardDialog::nextStep() {
     }
     case Step::WiFiConfig: {
       ni = Step::WiFiConnect;
+      wifiName_ = ui_.s3_wifiName->currentText();
+      wifiPass_ = ui_.s3_wifiPass->toPlainText();
+      qInfo() << "Selected network:" << wifiName_;
       break;
     }
     case Step::WiFiConnect: {
@@ -170,12 +173,21 @@ void WizardDialog::currentStepChanged() {
   }
   if (ci == Step::Flashing) {
     fwc_.reset();
+    ui_.s2_1_circle->hide();
+    ui_.s2_1_progress->hide();
     if (selectedFirmwareURL_.scheme() == "") {
       flashFirmware(selectedFirmwareURL_.toString());
     } else {
       startFirmwareDownload(selectedFirmwareURL_);
     }
     ui_.nextBtn->setEnabled(false);
+  }
+  if (ci == Step::WiFiConfig) {
+    ui_.nextBtn->setEnabled(!ui_.s3_wifiName->currentText().isEmpty());
+  }
+  if (ci == Step::WiFiConnect) {
+    updateWiFiStatus(wifiStatus_);
+    fwc_->doWifiSetup(wifiName_, wifiPass_);
   }
   if (ci == Step::Finish) {
     ui_.nextBtn->setText(tr("Finish"));
@@ -324,6 +336,7 @@ void WizardDialog::startFirmwareDownload(const QUrl &url) {
 void WizardDialog::downloadProgress(qint64 recd, qint64 total) {
   qDebug() << "downloadProgress" << recd << total;
   if (currentStep() != Step::Flashing) return;
+  ui_.s2_1_circle->show();
   ui_.s2_1_progress->show();
   const qint64 progressPct = recd * 100 / total;
   ui_.s2_1_progress->setText(tr("%1%").arg(progressPct));
@@ -337,6 +350,7 @@ void WizardDialog::downloadFinished() {
     prevStep();
     return;
   }
+  ui_.s2_1_circle->hide();
   ui_.s2_1_progress->hide();
   flashFirmware(fd_->fileName());
 }
@@ -404,6 +418,7 @@ void WizardDialog::flashFirmware(const QString &fileName) {
 void WizardDialog::flashingProgress(int bytesWritten) {
   qDebug() << "Flashed" << bytesWritten << "of" << bytesToFlash_;
   if (currentStep() != Step::Flashing) return;
+  ui_.s2_1_circle->show();
   ui_.s2_1_progress->show();
   const int progressPct = bytesWritten * 100 / bytesToFlash_;
   ui_.s2_1_progress->setText(tr("%1%").arg(progressPct));
@@ -412,6 +427,7 @@ void WizardDialog::flashingProgress(int bytesWritten) {
 void WizardDialog::flashingDone(QString msg, bool success) {
   worker_->quit();
   ui_.prevBtn->setEnabled(true);
+  ui_.s2_1_circle->hide();
   ui_.s2_1_progress->hide();
   if (success) {
     ui_.s2_1_title->setText(tr("FIRMWARE IS BOOTING ..."));
@@ -435,6 +451,8 @@ void WizardDialog::fwConnectResult(util::Status st) {
   ui_.nextBtn->setEnabled(true);
   connect(fwc_.get(), &FWClient::wifiScanResult, this,
           &WizardDialog::updateWiFiNetworks);
+  connect(fwc_.get(), &FWClient::wifiStatusChanged, this,
+          &WizardDialog::updateWiFiStatus);
   fwc_->doWifiScan();
 }
 
@@ -444,6 +462,22 @@ void WizardDialog::updateWiFiNetworks(QStringList networks) {
   networks.sort();
   for (const QString &name : networks) {
     ui_.s3_wifiName->addItem(name, name);
+  }
+  if (currentStep() == Step::WiFiConfig) {
+    ui_.nextBtn->setEnabled(!ui_.s3_wifiName->currentText().isEmpty());
+  }
+}
+
+void WizardDialog::updateWiFiStatus(FWClient::WifiStatus ws) {
+  if (wifiStatus_ != ws) {
+    qInfo() << "WiFi status:" << static_cast<int>(ws);
+    wifiStatus_ = ws;
+  }
+  if (currentStep() == Step::WiFiConnect) {
+    const bool isConnected = (ws == FWClient::WifiStatus::IP_Acquired);
+    ui_.s3_1_circle->setVisible(isConnected);
+    ui_.s3_1_connected->setVisible(isConnected);
+    ui_.nextBtn->setEnabled(isConnected);
   }
 }
 

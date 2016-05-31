@@ -51,6 +51,7 @@ class WizardDialog : public QMainWindow {
 
   void fwConnectResult(util::Status st);
   void updateWiFiNetworks(QStringList networks);
+  void updateWiFiStatus(FWClient::WifiStatus ws);
 
 signals:
   void showPromptResult(int clicked_button);
@@ -82,14 +83,17 @@ signals:
   std::unique_ptr<HAL> hal_;
   std::unique_ptr<QSerialPort> port_;
   std::unique_ptr<QThread> worker_;
-  int bytesToFlash_;
+  int bytesToFlash_ = 0;
 
   QJsonArray releases_;
   std::unique_ptr<FileDownloader> fd_;
   std::unique_ptr<FWClient> fwc_;
+  FWClient::WifiStatus wifiStatus_ = FWClient::WifiStatus::Disconnected;
 
   QString selectedPlatform_;
   QUrl selectedFirmwareURL_;
+  QString wifiName_;
+  QString wifiPass_;
 
   GUIPrompter prompter_;
   Ui::WizardWindow ui_;

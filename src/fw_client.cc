@@ -19,6 +19,13 @@
 
 namespace {
 const char kPromptEnd[] = "] $ ";
+
+QString jsEscapeString(const QString &s) {
+  QString escaped(s);
+  escaped = escaped.replace(R"(\)", R"(\\)");
+  escaped = escaped.replace("'", R"(\')");
+  return QString("'%1'").arg(escaped);
+}
 }
 
 FWClient::FWClient(QSerialPort *port)
@@ -43,9 +50,22 @@ void FWClient::doConnect() {
 
 void FWClient::doWifiScan() {
   if (!connected_) return;
+  qInfo() << "doWifiScan";
   port_->write(
       R"(Wifi.scan(function (a) {)" BEGIN_MARKER_JS
       R"(print(JSON.stringify({t:"wsr", r:a}));)" END_MARKER_JS "});\n");
+}
+
+void FWClient::doWifiSetup(const QString &ssid, const QString &password) {
+  if (!connected_) return;
+  qInfo() << "doWifiSetup" << ssid << (password.isEmpty() ? "" : "(password)");
+  port_->write(
+      R"(Wifi.changed(function (s) {)" BEGIN_MARKER_JS
+      R"(print(JSON.stringify({t:"ws", ws:s}));)" END_MARKER_JS "});\n");
+  port_->write(QString("Wifi.setup(%1, %2);\n")
+                   .arg(jsEscapeString(ssid))
+                   .arg(jsEscapeString(password))
+                   .toUtf8());
 }
 
 void FWClient::doConnectAttempt() {
@@ -75,32 +95,56 @@ void FWClient::portReadyRead() {
   while (true) {
     const int beginIndex = buf_.indexOf(beginMarker_);
     const int endIndex = buf_.indexOf(endMarker_);
-    qDebug() << beginIndex << endIndex;
     if (beginIndex < 0 || endIndex < beginIndex) return;
+    qDebug() << beginIndex << endIndex;
     const QByteArray content =
         buf_.mid(beginIndex + beginMarker_.length(),
                  endIndex - beginIndex - beginMarker_.length());
     qDebug() << content;
-    QJsonParseError err;
-    QJsonDocument doc = QJsonDocument::fromJson(content, &err);
-    if (err.error == QJsonParseError::NoError) {
-      if (doc.isObject() && doc.object()["t"].isString()) {
-        const QString type = doc.object()["t"].toString();
-        if (type == "wsr") {
-          QStringList networks;
-          for (const auto &v : doc.object()["r"].toArray()) {
-            networks.push_back(v.toString());
-          }
-          emit wifiScanResult(networks);
-        }
-      } else {
-        qCritical() << "Invalid JSON:" << content;
-      }
-    } else {
-      const QString msg(
-          tr("Failed to parse JSON: %1").arg(content.toStdString().c_str()));
-      qCritical() << msg;
-    }
+    parseMessage(content);
     buf_ = buf_.mid(endIndex + endMarker_.length());
+  }
+}
+
+void FWClient::parseMessage(const QByteArray &msg) {
+  QJsonParseError err;
+  QJsonDocument doc = QJsonDocument::fromJson(msg, &err);
+  if (err.error != QJsonParseError::NoError) {
+    const QString msg(
+        tr("Failed to parse JSON: %1").arg(msg.toStdString().c_str()));
+    qCritical() << msg;
+    return;
+  }
+  if (!doc.isObject() || !doc.object()["t"].isString()) {
+    qCritical() << "Invalid message format:" << msg;
+    return;
+  }
+  const QJsonObject &o = doc.object();
+  const QString type = o["t"].toString();
+  if (type == "wsr") {
+    QStringList networks;
+    for (const auto &v : o["r"].toArray()) {
+      networks.push_back(v.toString());
+    }
+    emit wifiScanResult(networks);
+  } else if (type == "ws") {
+    WifiStatus ws;
+    switch (o["ws"].toInt()) {
+      case 0:
+        ws = WifiStatus::Disconnected;
+        break;
+      case 1:
+        ws = WifiStatus::Connected;
+        break;
+      case 2:
+        ws = WifiStatus::IP_Acquired;
+        break;
+      default:
+        qCritical() << "Invalid wifi status:" << o["ws"].toInt();
+        return;
+    }
+    emit wifiStatusChanged(ws);
+  } else {
+    qCritical() << "Unknown messgae type:" << type << msg;
   }
 }

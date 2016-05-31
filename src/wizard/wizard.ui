@@ -812,7 +812,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>3</number>
+     <number>2</number>
     </property>
     <widget class="QWidget" name="step1">
      <widget class="QLabel" name="s1_label">
@@ -1441,7 +1441,7 @@
        <set>Qt::AlignCenter</set>
       </property>
      </widget>
-     <widget class="QLabel" name="s2_1_label_3">
+     <widget class="QLabel" name="s2_1_circle">
       <property name="geometry">
        <rect>
         <x>420</x>
@@ -1468,7 +1468,7 @@
      </widget>
      <zorder>s2_1_title</zorder>
      <zorder>s2_1_label</zorder>
-     <zorder>s2_1_label_3</zorder>
+     <zorder>s2_1_circle</zorder>
      <zorder>s2_1_progress</zorder>
     </widget>
     <widget class="QWidget" name="step3">
@@ -1853,7 +1853,7 @@
        <set>Qt::AlignCenter</set>
       </property>
      </widget>
-     <widget class="QLabel" name="label_3">
+     <widget class="QLabel" name="s3_1_circle">
       <property name="geometry">
        <rect>
         <x>420</x>
@@ -1878,7 +1878,7 @@
        <set>Qt::AlignCenter</set>
       </property>
      </widget>
-     <widget class="QLabel" name="label_12">
+     <widget class="QLabel" name="s3_1_connected">
       <property name="geometry">
        <rect>
         <x>510</x>

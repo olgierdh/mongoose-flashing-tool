@@ -2559,29 +2559,29 @@
        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
       </property>
      </widget>
-     <widget class="QTextEdit" name="pskEntry">
+     <widget class="QTextEdit" name="s4_1_psk">
       <property name="geometry">
        <rect>
         <x>460</x>
         <y>270</y>
-        <width>221</width>
-        <height>31</height>
+        <width>250</width>
+        <height>30</height>
        </rect>
       </property>
      </widget>
-     <widget class="QTextEdit" name="cloudIDEntry">
+     <widget class="QTextEdit" name="s4_1_cloudID">
       <property name="geometry">
        <rect>
         <x>460</x>
         <y>200</y>
-        <width>221</width>
-        <height>31</height>
+        <width>250</width>
+        <height>30</height>
        </rect>
       </property>
      </widget>
     </widget>
     <widget class="QWidget" name="step4_2">
-     <widget class="QLabel" name="s4_2_label_1">
+     <widget class="QLabel" name="s4_2_title">
       <property name="geometry">
        <rect>
         <x>0</x>
@@ -2667,7 +2667,7 @@
        <set>Qt::AlignCenter</set>
       </property>
      </widget>
-     <widget class="QLabel" name="s4_2_label_13">
+     <widget class="QLabel" name="s4_2_connected">
       <property name="geometry">
        <rect>
         <x>500</x>
@@ -2784,7 +2784,7 @@
        <set>Qt::AlignCenter</set>
       </property>
      </widget>
-     <widget class="QLabel" name="s4_2_label_4">
+     <widget class="QLabel" name="s4_2_circle">
       <property name="geometry">
        <rect>
         <x>410</x>
@@ -2809,7 +2809,7 @@
        <set>Qt::AlignCenter</set>
       </property>
      </widget>
-     <widget class="QLabel" name="label_15">
+     <widget class="QLabel" name="s4_2_link">
       <property name="geometry">
        <rect>
         <x>410</x>

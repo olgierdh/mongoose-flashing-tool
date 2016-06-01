@@ -472,7 +472,7 @@ void MainDialog::reboot() {
   }
   if (hal_ == nullptr) createHAL();
   disconnectTerminal();
-  util::Status st = hal_->reboot(serial_port_.get());
+  util::Status st = hal_->reboot();
   connectDisconnectTerminal();
   if (!st.ok()) {
     qCritical() << "Rebooting failed:" << st.ToString().c_str();

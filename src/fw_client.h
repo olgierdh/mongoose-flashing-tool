@@ -7,10 +7,11 @@
 #define CS_FNC_SRC_FW_CLIENT_H_
 
 #include <QByteArray>
-#include <QStringList>
+#include <QJsonObject>
 #include <QObject>
 #include <QSerialPort>
 #include <QString>
+#include <QStringList>
 #include <QTimer>
 
 #include <common/util/status.h>
@@ -23,8 +24,10 @@ class FWClient : public QObject {
   ~FWClient() override;
 
   void doConnect();
+  void doGetConfig();
   void doWifiScan();
   void doWifiSetup(const QString &ssid, const QString &password);
+  void testClubbyConfig(const QJsonObject &cfg);
 
   // This is sj_wifi_status, reproduced here to avoid dependency.
   enum class WifiStatus {
@@ -35,14 +38,17 @@ class FWClient : public QObject {
 
 signals:
   void connectResult(util::Status result);
+  void getConfigResult(QJsonObject config);
   void wifiScanResult(QStringList networks);
   void wifiStatusChanged(WifiStatus ws);
+  void clubbyStatus(int status);
 
  private slots:
   void portReadyRead();
 
  private:
   void doConnectAttempt();
+  void sendCommand();
   void parseMessage(const QByteArray &msg);
 
   const QString beginMarker_;
@@ -53,6 +59,7 @@ signals:
   bool connected_;
   int connectAttempt_;
   QByteArray buf_;
+  QStringList cmdQueue_;
 };
 
 #endif /* CS_FNC_SRC_FW_CLIENT_H_ */

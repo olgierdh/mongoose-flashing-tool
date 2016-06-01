@@ -971,7 +971,7 @@ class CC3200HAL : public HAL {
     return "CC3200";
   }
 
-  util::Status reboot(QSerialPort *) const override {
+  util::Status reboot() override {
 #ifdef NO_LIBFTDI
     return util::Status(util::error::UNIMPLEMENTED,
                         "Rebooting CC3200 is not supported");

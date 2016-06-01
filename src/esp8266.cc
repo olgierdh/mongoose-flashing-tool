@@ -678,9 +678,9 @@ class ESP8266HAL : public HAL {
     return "ESP8266";
   }
 
-  util::Status reboot(QSerialPort *port) const override {
+  util::Status reboot() override {
     // TODO(rojer): Bring flashing data port setting here somehow.
-    ESPROMClient rom(port, port);
+    ESPROMClient rom(port_, port_);
     // To make sure we actually control things, connect to ROM first.
     util::Status st = rom.connect();
     if (!st.ok()) return QSP("failed to communicate to ROM", st);

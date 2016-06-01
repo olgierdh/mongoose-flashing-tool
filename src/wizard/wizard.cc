@@ -26,6 +26,28 @@ const char kReleaseInfoFile[] = ":/releases.json";
 // In the future we may want to fetch release info from a server.
 // const char kReleaseInfoURL[] = "https://backend.cesanta.com/...";
 
+const char kClubbyDeviceIdKey[] = "conf.clubby.device_id";
+const char kClubbyDevicePskKey[] = "conf.clubby.device_psk";
+const char kWiFiStaSsidKey[] = "conf.wifi.sta.ssid";
+const char kWiFiStaPassKey[] = "conf.wifi.sta.pass";
+const char kFwArchKey[] = "ro_vars.arch";
+const char kMacAddressKey[] = "ro_vars.mac_address";
+const char kFwBuildKey[] = "ro_vars.fw_id";
+
+const char kDeviceRegistrationUrl[] =
+    "https://cloud.cesanta.com/register_device";
+
+QJsonValue jsonLookup(const QJsonObject &obj, const QString &key) {
+  QJsonObject o = obj;
+  const auto parts = key.split(".");
+  for (int i = 0; i < parts.length() - 1; i++) {
+    const QString &k = parts[i];
+    if (!o[k].isObject()) return QJsonValue::Undefined;
+    o = o[k].toObject();
+  }
+  return o[parts.back()];
+}
+
 }  // namespace
 
 WizardDialog::WizardDialog(Config *config, QWidget *parent)
@@ -139,6 +161,8 @@ void WizardDialog::nextStep() {
       break;
     }
     case Step::CloudCredentials: {
+      cloudId_ = ui_.s4_1_cloudID->toPlainText();
+      cloudKey_ = ui_.s4_1_psk->toPlainText();
       ni = Step::CloudConnect;
       break;
     }
@@ -175,7 +199,10 @@ void WizardDialog::currentStepChanged() {
     fwc_.reset();
     ui_.s2_1_circle->hide();
     ui_.s2_1_progress->hide();
-    if (selectedFirmwareURL_.scheme() == "") {
+    if (selectedFirmwareURL_.toString() == "") {
+      hal_->reboot();
+      emit flashingDone("skipped", true /* success */);
+    } else if (selectedFirmwareURL_.scheme() == "") {
       flashFirmware(selectedFirmwareURL_.toString());
     } else {
       startFirmwareDownload(selectedFirmwareURL_);
@@ -188,6 +215,34 @@ void WizardDialog::currentStepChanged() {
   if (ci == Step::WiFiConnect) {
     updateWiFiStatus(wifiStatus_);
     fwc_->doWifiSetup(wifiName_, wifiPass_);
+  }
+  if (ci == Step::CloudRegistration) {
+    const QString &existingId =
+        jsonLookup(devConfig_, kClubbyDeviceIdKey).toString();
+    if (existingId != "") {
+      qInfo() << "Existing Clubby ID:" << existingId;
+      ui_.s4_existingID->setChecked(true);
+    } else {
+      qInfo() << "No Clubby ID";
+      ui_.s4_newID->setChecked(true);
+    }
+    ui_.nextBtn->setEnabled(true);
+  }
+  if (ci == Step::CloudCredentials) {
+    ui_.s4_1_cloudID->setText(
+        jsonLookup(devConfig_, kClubbyDeviceIdKey).toString());
+    ui_.s4_1_psk->setText(
+        jsonLookup(devConfig_, kClubbyDevicePskKey).toString());
+  }
+  if (ci == Step::CloudConnect) {
+    ui_.s4_2_circle->hide();
+    ui_.s4_2_connected->hide();
+    ui_.nextBtn->setEnabled(false);
+    if (ui_.s4_newID->isChecked()) {
+      registerDevice();
+    } else {
+      testCloudConnection(cloudId_, cloudKey_);
+    }
   }
   if (ci == Step::Finish) {
     ui_.nextBtn->setText(tr("Finish"));
@@ -306,6 +361,7 @@ void WizardDialog::updateReleaseInfo() {
 void WizardDialog::updateFirmwareSelector() {
   const QString platform = ui_.platformSelector->currentText().toUpper();
   ui_.firmwareSelector->clear();
+  ui_.firmwareSelector->addItem(tr("<Skip Flashing>"), "");
   for (const auto &item : releases_) {
     if (!item.isObject()) continue;
     const QJsonObject &r = item.toObject();
@@ -425,7 +481,7 @@ void WizardDialog::flashingProgress(int bytesWritten) {
 }
 
 void WizardDialog::flashingDone(QString msg, bool success) {
-  worker_->quit();
+  if (worker_ != nullptr) worker_->quit();
   ui_.prevBtn->setEnabled(true);
   ui_.s2_1_circle->hide();
   ui_.s2_1_progress->hide();
@@ -451,20 +507,52 @@ void WizardDialog::fwConnectResult(util::Status st) {
   ui_.nextBtn->setEnabled(true);
   connect(fwc_.get(), &FWClient::wifiScanResult, this,
           &WizardDialog::updateWiFiNetworks);
+  connect(fwc_.get(), &FWClient::getConfigResult, this,
+          &WizardDialog::updateSysConfig);
   connect(fwc_.get(), &FWClient::wifiStatusChanged, this,
           &WizardDialog::updateWiFiStatus);
+  connect(fwc_.get(), &FWClient::clubbyStatus, this,
+          &WizardDialog::clubbyStatus);
+  gotConfig_ = gotNetworks_ = false;
+  ui_.s3_wifiName->clear();
+  ui_.s3_wifiPass->clear();
+  fwc_->doGetConfig();
   fwc_->doWifiScan();
+}
+
+void WizardDialog::updateSysConfig(QJsonObject config) {
+  qInfo() << "Sys config:" << config;
+  devConfig_ = config;
+  gotConfig_ = true;
+  if (currentStep() == Step::WiFiConfig) {
+    ui_.nextBtn->setEnabled(gotConfig_ &&
+                            !ui_.s3_wifiName->currentText().isEmpty());
+  }
 }
 
 void WizardDialog::updateWiFiNetworks(QStringList networks) {
   qInfo() << "WiFi networks:" << networks;
   ui_.s3_wifiName->clear();
   networks.sort();
-  for (const QString &name : networks) {
+  const QString &currentName =
+      jsonLookup(devConfig_, kWiFiStaSsidKey).toString();
+  const QString &currentPass =
+      jsonLookup(devConfig_, kWiFiStaPassKey).toString();
+  int i = 0;
+  int currentIndex = -1;
+  for (int i = 0; i < networks.length(); i++) {
+    const QString &name = networks[i];
     ui_.s3_wifiName->addItem(name, name);
+    if (name == currentName) currentIndex = i;
   }
+  if (currentIndex >= 0) {
+    ui_.s3_wifiName->setCurrentIndex(currentIndex);
+    ui_.s3_wifiPass->setText(currentPass);
+  }
+  gotNetworks_ = true;
   if (currentStep() == Step::WiFiConfig) {
-    ui_.nextBtn->setEnabled(!ui_.s3_wifiName->currentText().isEmpty());
+    ui_.nextBtn->setEnabled(gotConfig_ &&
+                            !ui_.s3_wifiName->currentText().isEmpty());
   }
 }
 
@@ -478,6 +566,88 @@ void WizardDialog::updateWiFiStatus(FWClient::WifiStatus ws) {
     ui_.s3_1_circle->setVisible(isConnected);
     ui_.s3_1_connected->setVisible(isConnected);
     ui_.nextBtn->setEnabled(isConnected);
+  }
+}
+
+void WizardDialog::registerDevice() {
+  ui_.s4_2_title->setText(tr("REGISTERING DEVICE ..."));
+  const QString arch = jsonLookup(devConfig_, kFwArchKey).toString();
+  const QString mac = jsonLookup(devConfig_, kMacAddressKey).toString();
+  const QString fwBuild = jsonLookup(devConfig_, kFwBuildKey).toString();
+  qInfo() << "registerDevice" << kDeviceRegistrationUrl << arch << mac
+          << fwBuild;
+  if (mac == "" || arch == "") {
+    const QString msg = tr("Did not find device arch and MAC address");
+    qCritical() << msg;
+    QMessageBox::critical(this, tr("Error"), msg);
+    return;
+  }
+  QUrl url(kDeviceRegistrationUrl);
+  QNetworkRequest req(url);
+  req.setHeader(QNetworkRequest::ContentTypeHeader,
+                "application/x-www-form-urlencoded");
+  const QByteArray params =
+      QString("arch=%1&mac=%2&fw=%3").arg(arch).arg(mac).arg(fwBuild).toUtf8();
+  registerDeviceReply_ = nam_.post(req, params);
+  connect(registerDeviceReply_, &QNetworkReply::finished, this,
+          &WizardDialog::registerDeviceRequestFinished);
+}
+
+void WizardDialog::registerDeviceRequestFinished() {
+  const int code =
+      registerDeviceReply_->attribute(QNetworkRequest::HttpStatusCodeAttribute)
+          .toInt();
+  const QByteArray response = registerDeviceReply_->readAll();
+  qDebug() << "registerDeviceRequestFinished" << code << response;
+  if (!registerDeviceReply_->error()) {
+    QJsonParseError err;
+    QJsonDocument doc = QJsonDocument::fromJson(response, &err);
+    if (err.error == QJsonParseError::NoError &&
+        doc.object()["device_id"].toString() != "" &&
+        doc.object()["device_psk"].toString() != "") {
+      cloudId_ = doc.object()["device_id"].toString();
+      cloudKey_ = doc.object()["device_psk"].toString();
+      testCloudConnection(cloudId_, cloudKey_);
+    } else {
+      const QString msg(tr("Invalid response: %1").arg(QString(response)));
+      qCritical() << msg;
+      QMessageBox::critical(this, tr("Error"), msg);
+    }
+  } else {
+    const QString msg = tr("Error registering device: %1")
+                            .arg(registerDeviceReply_->errorString());
+    qCritical() << msg;
+    QMessageBox::critical(this, tr("Error"), msg);
+  }
+  registerDeviceReply_->deleteLater();
+  registerDeviceReply_ = nullptr;
+}
+
+void WizardDialog::testCloudConnection(const QString &cloudId,
+                                       const QString &cloudKey) {
+  ui_.s4_2_title->setText(tr("CONNECTING TO CLOUD ..."));
+  ui_.nextBtn->setEnabled(false);
+  ui_.s4_2_circle->hide();
+  ui_.s4_2_connected->hide();
+  qInfo() << "testCloudConnection" << cloudId << cloudKey;
+  QJsonObject cfg;
+  cfg["src"] = cloudId_;
+  cfg["key"] = cloudKey_;
+  cfg["url"] = "api.cesanta.com:80";
+  cfg["backend"] = "//api.cesanta.com";
+  fwc_->testClubbyConfig(cfg);
+}
+
+void WizardDialog::clubbyStatus(int status) {
+  qInfo() << "clubbyStatus" << status;
+  if (status == 1) {
+    ui_.nextBtn->setEnabled(true);
+    ui_.s4_2_circle->show();
+    ui_.s4_2_connected->show();
+  } else {
+    const QString msg(tr("Cloud connection failed"));
+    qCritical() << msg;
+    QMessageBox::critical(this, tr("Error"), msg);
   }
 }
 

@@ -8,7 +8,10 @@
 
 #include <QDebug>
 #include <QJsonArray>
+#include <QJsonObject>
 #include <QMainWindow>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
 #include <QSerialPort>
 #include <QSettings>
 #include <QThread>
@@ -50,8 +53,15 @@ class WizardDialog : public QMainWindow {
   void flashingDone(QString msg, bool success);
 
   void fwConnectResult(util::Status st);
+  void updateSysConfig(QJsonObject config);
   void updateWiFiNetworks(QStringList networks);
   void updateWiFiStatus(FWClient::WifiStatus ws);
+
+  void registerDevice();
+  void registerDeviceRequestFinished();
+
+  void testCloudConnection(const QString &cloudId, const QString &cloudKey);
+  void clubbyStatus(int status);
 
 signals:
   void showPromptResult(int clicked_button);
@@ -88,13 +98,21 @@ signals:
   QJsonArray releases_;
   std::unique_ptr<FileDownloader> fd_;
   std::unique_ptr<FWClient> fwc_;
+  bool gotConfig_ = false;
+  bool gotNetworks_ = false;
+  QJsonObject devConfig_;
   FWClient::WifiStatus wifiStatus_ = FWClient::WifiStatus::Disconnected;
+
+  QNetworkReply *registerDeviceReply_;
 
   QString selectedPlatform_;
   QUrl selectedFirmwareURL_;
   QString wifiName_;
   QString wifiPass_;
+  QString cloudId_;
+  QString cloudKey_;
 
+  QNetworkAccessManager nam_;
   GUIPrompter prompter_;
   Ui::WizardWindow ui_;
 

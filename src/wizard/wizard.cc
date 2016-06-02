@@ -631,10 +631,9 @@ void WizardDialog::testCloudConnection(const QString &cloudId,
   ui_.s4_2_connected->hide();
   qInfo() << "testCloudConnection" << cloudId << cloudKey;
   QJsonObject cfg;
-  cfg["src"] = cloudId_;
-  cfg["key"] = cloudKey_;
-  cfg["url"] = "api.cesanta.com:80";
-  cfg["backend"] = "//api.cesanta.com";
+  cfg["device_id"] = cloudId_;
+  cfg["device_psk"] = cloudKey_;
+  cfg["server_address"] = "api.cesanta.com";
   fwc_->testClubbyConfig(cfg);
 }
 

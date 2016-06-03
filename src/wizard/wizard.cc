@@ -227,7 +227,6 @@ void WizardDialog::currentStepChanged() {
   }
   if (ci == Step::Flashing) {
     fwc_.reset();
-    ui_.s2_1_circle->hide();
     ui_.s2_1_progress->hide();
     if (selectedFirmwareURL_.toString() == "") {
       hal_->reboot();
@@ -445,10 +444,8 @@ void WizardDialog::startFirmwareDownload(const QUrl &url) {
 void WizardDialog::downloadProgress(qint64 recd, qint64 total) {
   qDebug() << "downloadProgress" << recd << total;
   if (currentStep() != Step::Flashing) return;
-  ui_.s2_1_circle->show();
   ui_.s2_1_progress->show();
-  const qint64 progressPct = recd * 100 / total;
-  ui_.s2_1_progress->setText(tr("%1%").arg(progressPct));
+  ui_.s2_1_progress->setProgress(recd, total);
 }
 
 void WizardDialog::downloadFinished() {
@@ -459,7 +456,6 @@ void WizardDialog::downloadFinished() {
     prevStep();
     return;
   }
-  ui_.s2_1_circle->hide();
   ui_.s2_1_progress->hide();
   flashFirmware(fd_->fileName());
 }
@@ -527,16 +523,13 @@ void WizardDialog::flashFirmware(const QString &fileName) {
 void WizardDialog::flashingProgress(int bytesWritten) {
   qDebug() << "Flashed" << bytesWritten << "of" << bytesToFlash_;
   if (currentStep() != Step::Flashing) return;
-  ui_.s2_1_circle->show();
   ui_.s2_1_progress->show();
-  const int progressPct = bytesWritten * 100 / bytesToFlash_;
-  ui_.s2_1_progress->setText(tr("%1%").arg(progressPct));
+  ui_.s2_1_progress->setProgress(bytesWritten, bytesToFlash_);
 }
 
 void WizardDialog::flashingDone(QString msg, bool success) {
   if (worker_ != nullptr) worker_->quit();
   ui_.prevBtn->setEnabled(true);
-  ui_.s2_1_circle->hide();
   ui_.s2_1_progress->hide();
   if (success) {
     ui_.s2_1_title->setText(tr("FIRMWARE IS BOOTING ..."));

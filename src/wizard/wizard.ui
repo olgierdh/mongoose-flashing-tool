@@ -1365,66 +1365,6 @@
        <set>Qt::AlignCenter</set>
       </property>
      </widget>
-     <widget class="QLabel" name="s2_1_progress">
-      <property name="geometry">
-       <rect>
-        <x>510</x>
-        <y>165</y>
-        <width>130</width>
-        <height>80</height>
-       </rect>
-      </property>
-      <property name="palette">
-       <palette>
-        <active>
-         <colorrole role="WindowText">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>255</red>
-            <green>255</green>
-            <blue>255</blue>
-           </color>
-          </brush>
-         </colorrole>
-        </active>
-        <inactive>
-         <colorrole role="WindowText">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>255</red>
-            <green>255</green>
-            <blue>255</blue>
-           </color>
-          </brush>
-         </colorrole>
-        </inactive>
-        <disabled>
-         <colorrole role="WindowText">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>120</red>
-            <green>120</green>
-            <blue>120</blue>
-           </color>
-          </brush>
-         </colorrole>
-        </disabled>
-       </palette>
-      </property>
-      <property name="font">
-       <font>
-        <family>Roboto Thin</family>
-        <pointsize>28</pointsize>
-        <underline>false</underline>
-       </font>
-      </property>
-      <property name="text">
-       <string>0%</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignCenter</set>
-      </property>
-     </widget>
      <widget class="QLabel" name="s2_1_label">
       <property name="geometry">
        <rect>
@@ -1450,35 +1390,22 @@
        <set>Qt::AlignCenter</set>
       </property>
      </widget>
-     <widget class="QLabel" name="s2_1_circle">
+     <widget class="ProgressWidget" name="s2_1_progress">
       <property name="geometry">
        <rect>
-        <x>420</x>
-        <y>80</y>
-        <width>310</width>
-        <height>250</height>
+        <x>510</x>
+        <y>120</y>
+        <width>180</width>
+        <height>180</height>
        </rect>
       </property>
-      <property name="maximumSize">
-       <size>
-        <width>491</width>
-        <height>331</height>
-       </size>
+      <property name="toolTip">
+       <string>Fancy progress widget</string>
       </property>
-      <property name="text">
-       <string/>
-      </property>
-      <property name="pixmap">
-       <pixmap resource="wizard.qrc">:/img/loading.png</pixmap>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignCenter</set>
+      <property name="whatsThis">
+       <string>Circular progress widget.</string>
       </property>
      </widget>
-     <zorder>s2_1_title</zorder>
-     <zorder>s2_1_label</zorder>
-     <zorder>s2_1_circle</zorder>
-     <zorder>s2_1_progress</zorder>
     </widget>
     <widget class="QWidget" name="step3">
      <widget class="QLabel" name="s3_label_4">
@@ -3033,6 +2960,13 @@
   </widget>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>ProgressWidget</class>
+   <extends>QWidget</extends>
+   <header>progress_widget.h</header>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="wizard.qrc"/>
  </resources>

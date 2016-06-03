@@ -2,9 +2,7 @@
     <qresource prefix="/">
         <file>img/logo.png</file>
         <file>img/smartjs.png</file>
-        <file>img/loading.png</file>
         <file>img/loading_complete.png</file>
-        <file>img/loading_complete2.png</file>
         <file>img/laptop1.png</file>
         <file>img/laptop2.png</file>
         <file>img/laptop3.png</file>

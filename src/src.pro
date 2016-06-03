@@ -73,8 +73,9 @@ CONFIG(cli) {
   TARGET = $${TARGET}-cli
 } else { # GUI
   QT += widgets
-  HEADERS += dialog.h gui_prompter.h log_viewer.h settings.h wizard/wizard.h
-  SOURCES += dialog.cc gui_prompter.cc log_viewer.cc main.cc settings.cc wizard/wizard.cc
+  HEADERS += dialog.h gui_prompter.h log_viewer.h settings.h progress_widget/progress_widget.h wizard/wizard.h
+  SOURCES += dialog.cc gui_prompter.cc log_viewer.cc main.cc settings.cc progress_widget/progress_widget.cc wizard/wizard.cc
+  INCLUDEPATH += progress_widget
 }
 
 CONFIG(static):CONFIG(unix) {

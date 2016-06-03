@@ -15,14 +15,15 @@ int main(int argc, char *argv[]) {
   WizardDialog::addOptions(&config);
   if (!initApp(&argc, argv, &config, &parser).ok()) return 1;
 
-  if (argc == 1 || parser.isSet("gui") || parser.isSet("wizard")) {
+  if (!parser.isSet("flash") && !parser.isSet("console") &&
+      !parser.isSet("probe")) {
     // Run in GUI mode.
     QApplication app(argc, argv);
     parser.process(app);
     config.fromCommandLine(parser);
     app.setApplicationDisplayName("Mongoose IoT flashing tool");
     std::unique_ptr<QMainWindow> w;
-    if (parser.isSet("wizard")) {
+    if (!parser.isSet("advanced")) {
       w.reset(new WizardDialog(&config));
     } else {
       MainDialog *md = new MainDialog(&config);

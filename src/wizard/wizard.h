@@ -9,6 +9,7 @@
 #include <QDebug>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QJsonValue>
 #include <QMainWindow>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -29,6 +30,7 @@ class WizardDialog : public QMainWindow {
   Q_OBJECT
 
  public:
+  static void addOptions(Config *config);
   WizardDialog(Config *config, QWidget *parent = nullptr);
 
  private slots:
@@ -83,6 +85,9 @@ signals:
   };
 
   Step currentStep() const;
+
+  QJsonValue getDevConfKey(const QString &key);
+  QJsonValue getDevVar(const QString &var);
 
   void closeEvent(QCloseEvent *event);
 

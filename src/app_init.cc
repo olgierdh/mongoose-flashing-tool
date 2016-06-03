@@ -39,9 +39,6 @@ util::Status initApp(int *argc, char *argv[], Config *config,
   // QCommandLineOption supports C++11-style initialization only since Qt 5.4.
   QList<QCommandLineOption> commonOpts;
   commonOpts.append(QCommandLineOption(
-      "console-baud-rate", "Baud rate to use with the console serial port.",
-      "number", "115200"));
-  commonOpts.append(QCommandLineOption(
       Flasher::kFlashBaudRateOption,
       "Baud rate to use with the serial port used for flashing.", "number",
       "0"));
@@ -52,11 +49,6 @@ util::Status initApp(int *argc, char *argv[], Config *config,
       Flasher::kDumpFSOption,
       "Dump file system image to a given file before merging.", "filename"));
   commonOpts.append(QCommandLineOption(
-      "console-log",
-      "If set, bytes read from a serial port in console mode will be "
-      "appended to the given file.",
-      "file"));
-  commonOpts.append(QCommandLineOption(
       {"verbose", "V"},
       "Verbosity level. 0 – normal output, 1 - also print critical (but not "
       "fatal) errors, 2 - also print warnings, 3 - print info messages, 4 - "
@@ -64,9 +56,6 @@ util::Status initApp(int *argc, char *argv[], Config *config,
       "level", "1"));
   commonOpts.append(
       QCommandLineOption("log", "Redirect logging into a file.", "filename"));
-  commonOpts.append(QCommandLineOption(
-      "console-line-count",
-      "Maximum number of lines to keep in console window.", "count", "4096"));
   config->addOptions(commonOpts);
   ESP8266::addOptions(config);
   CC3200::addOptions(config);

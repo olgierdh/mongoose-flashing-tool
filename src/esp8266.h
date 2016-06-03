@@ -23,7 +23,7 @@ namespace ESP8266 {
 util::StatusOr<int> flashParamsFromString(const QString &s);
 util::StatusOr<int> flashSizeFromParams(int flashParams);
 
-void addOptions(Config *parser);
+void addOptions(Config *config);
 
 QByteArray makeIDBlock(const QString &domain);
 

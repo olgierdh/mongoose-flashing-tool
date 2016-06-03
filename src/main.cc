@@ -11,6 +11,8 @@
 int main(int argc, char *argv[]) {
   Config config;
   QCommandLineParser parser;
+  MainDialog::addOptions(&config);
+  WizardDialog::addOptions(&config);
   if (!initApp(&argc, argv, &config, &parser).ok()) return 1;
 
   if (argc == 1 || parser.isSet("gui") || parser.isSet("wizard")) {

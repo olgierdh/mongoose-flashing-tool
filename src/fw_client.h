@@ -8,6 +8,7 @@
 
 #include <QByteArray>
 #include <QJsonObject>
+#include <QJsonValue>
 #include <QObject>
 #include <QSerialPort>
 #include <QString>
@@ -28,6 +29,8 @@ class FWClient : public QObject {
   void doWifiScan();
   void doWifiSetup(const QString &ssid, const QString &password);
   void testClubbyConfig(const QJsonObject &cfg);
+  void setConfValue(const QString &k, const QJsonValue &v);
+  void doSaveConfig();
 
   // This is sj_wifi_status, reproduced here to avoid dependency.
   enum class WifiStatus {
@@ -55,9 +58,12 @@ signals:
   const QString endMarker_;
   QSerialPort *port_;
 
+  int clubbyTestId_ = 0;
+
   QTimer connectTimer_;
-  bool connected_;
-  int connectAttempt_;
+  bool connected_ = false;
+  bool sending_ = false;
+  int connectAttempt_ = 0;
   QByteArray buf_;
   QStringList cmdQueue_;
 };

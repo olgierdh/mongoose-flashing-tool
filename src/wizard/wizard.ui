@@ -549,6 +549,9 @@
     <property name="text">
      <string>&lt;a href=&quot;http://TODO&quot;&gt;Cesanta Cloud&lt;/a&gt;</string>
     </property>
+    <property name="openExternalLinks">
+     <bool>true</bool>
+    </property>
    </widget>
    <widget class="QLabel" name="FnC">
     <property name="geometry">
@@ -664,6 +667,9 @@
     </property>
     <property name="text">
      <string>&lt;a href=&quot;http://TODO&quot;&gt;Documentation&lt;/a&gt;</string>
+    </property>
+    <property name="openExternalLinks">
+     <bool>true</bool>
     </property>
    </widget>
    <widget class="QLabel" name="copyright">
@@ -1037,6 +1043,9 @@
       </property>
       <property name="alignment">
        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+      </property>
+      <property name="openExternalLinks">
+       <bool>true</bool>
       </property>
      </widget>
      <widget class="QComboBox" name="platformSelector">
@@ -1530,6 +1539,9 @@
       </property>
       <property name="alignment">
        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+      </property>
+      <property name="openExternalLinks">
+       <bool>true</bool>
       </property>
      </widget>
      <widget class="QTextEdit" name="s3_wifiPass">
@@ -2809,69 +2821,9 @@
        <set>Qt::AlignCenter</set>
       </property>
      </widget>
-     <widget class="QLabel" name="s4_2_link">
-      <property name="geometry">
-       <rect>
-        <x>410</x>
-        <y>330</y>
-        <width>310</width>
-        <height>20</height>
-       </rect>
-      </property>
-      <property name="palette">
-       <palette>
-        <active>
-         <colorrole role="WindowText">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>255</red>
-            <green>255</green>
-            <blue>255</blue>
-           </color>
-          </brush>
-         </colorrole>
-        </active>
-        <inactive>
-         <colorrole role="WindowText">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>255</red>
-            <green>255</green>
-            <blue>255</blue>
-           </color>
-          </brush>
-         </colorrole>
-        </inactive>
-        <disabled>
-         <colorrole role="WindowText">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>120</red>
-            <green>120</green>
-            <blue>120</blue>
-           </color>
-          </brush>
-         </colorrole>
-        </disabled>
-       </palette>
-      </property>
-      <property name="font">
-       <font>
-        <family>Roboto Light</family>
-        <pointsize>12</pointsize>
-        <underline>false</underline>
-       </font>
-      </property>
-      <property name="text">
-       <string>&lt;a href=&quot;https://cloud.cesanta.com/TODO&quot;&gt;Click here to add device to a project&lt;/a&gt;</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignCenter</set>
-      </property>
-     </widget>
     </widget>
     <widget class="QWidget" name="step5">
-     <widget class="QLabel" name="s4_2_label_2">
+     <widget class="QLabel" name="s5_title">
       <property name="geometry">
        <rect>
         <x>0</x>
@@ -2932,7 +2884,7 @@
        <set>Qt::AlignCenter</set>
       </property>
      </widget>
-     <widget class="QLabel" name="s4_1_label_5">
+     <widget class="QLabel" name="s5_label_5">
       <property name="geometry">
        <rect>
         <x>0</x>
@@ -2990,6 +2942,69 @@
       </property>
       <property name="alignment">
        <set>Qt::AlignCenter</set>
+      </property>
+     </widget>
+     <widget class="QLabel" name="s5_claim_link">
+      <property name="geometry">
+       <rect>
+        <x>260</x>
+        <y>270</y>
+        <width>310</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="palette">
+       <palette>
+        <active>
+         <colorrole role="WindowText">
+          <brush brushstyle="SolidPattern">
+           <color alpha="255">
+            <red>255</red>
+            <green>255</green>
+            <blue>255</blue>
+           </color>
+          </brush>
+         </colorrole>
+        </active>
+        <inactive>
+         <colorrole role="WindowText">
+          <brush brushstyle="SolidPattern">
+           <color alpha="255">
+            <red>255</red>
+            <green>255</green>
+            <blue>255</blue>
+           </color>
+          </brush>
+         </colorrole>
+        </inactive>
+        <disabled>
+         <colorrole role="WindowText">
+          <brush brushstyle="SolidPattern">
+           <color alpha="255">
+            <red>120</red>
+            <green>120</green>
+            <blue>120</blue>
+           </color>
+          </brush>
+         </colorrole>
+        </disabled>
+       </palette>
+      </property>
+      <property name="font">
+       <font>
+        <family>Roboto Light</family>
+        <pointsize>12</pointsize>
+        <underline>false</underline>
+       </font>
+      </property>
+      <property name="text">
+       <string>&lt;a href=&quot;https://cloud.cesanta.com/claim&quot;&gt;Add the device to your cloud project&lt;/a&gt;</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+      <property name="openExternalLinks">
+       <bool>true</bool>
       </property>
      </widget>
     </widget>

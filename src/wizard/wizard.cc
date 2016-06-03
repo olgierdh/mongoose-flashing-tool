@@ -1,5 +1,8 @@
 #include "wizard.h"
 
+#include <QCommandLineOption>
+#include <QCoreApplication>
+#include <QCryptographicHash>
 #include <QDebug>
 #include <QFile>
 #include <QJsonDocument>
@@ -7,6 +10,8 @@
 #include <QMessageBox>
 #include <QNetworkReply>
 #include <QSerialPortInfo>
+#include <QUuid>
+#include <QUrlQuery>
 
 #include "cc3200.h"
 #include "esp8266.h"
@@ -20,22 +25,30 @@
 #define qInfo qWarning
 #endif
 
+// From build_info.cc (auto-generated).
+extern const char *build_id;
+
 namespace {
 
 const char kReleaseInfoFile[] = ":/releases.json";
 // In the future we may want to fetch release info from a server.
 // const char kReleaseInfoURL[] = "https://backend.cesanta.com/...";
 
-const char kClubbyDeviceIdKey[] = "conf.clubby.device_id";
-const char kClubbyDevicePskKey[] = "conf.clubby.device_psk";
-const char kWiFiStaSsidKey[] = "conf.wifi.sta.ssid";
-const char kWiFiStaPassKey[] = "conf.wifi.sta.pass";
-const char kFwArchKey[] = "ro_vars.arch";
-const char kMacAddressKey[] = "ro_vars.mac_address";
-const char kFwBuildKey[] = "ro_vars.fw_id";
+const char kWiFiStaEnableKey[] = "wifi.sta.enable";
+const char kWiFiStaSsidKey[] = "wifi.sta.ssid";
+const char kWiFiStaPassKey[] = "wifi.sta.pass";
+const char kClubbyConnectOnBootKey[] = "clubby.connect_on_boot";
+const char kClubbyServerAddressKey[] = "clubby.server_address";
+const char kClubbyDeviceIdKey[] = "clubby.device_id";
+const char kClubbyDevicePskKey[] = "clubby.device_psk";
+const char kFwArchVar[] = "arch";
+const char kMacAddressVar[] = "mac_address";
+const char kFwBuildVar[] = "fw_id";
 
-const char kDeviceRegistrationUrl[] =
-    "https://cloud.cesanta.com/register_device";
+const char kCloudServerAddressOption[] = "cloud-server-address";
+const char kCloudFrontendUrlOption[] = "cloud-frontend-url";
+const char kCloudDeviceRegistrationPath[] = "/register_device";
+const char kCloudDeviceClaimPath[] = "/claim";
 
 QJsonValue jsonLookup(const QJsonObject &obj, const QString &key) {
   QJsonObject o = obj;
@@ -49,6 +62,18 @@ QJsonValue jsonLookup(const QJsonObject &obj, const QString &key) {
 }
 
 }  // namespace
+
+// static
+void WizardDialog::addOptions(Config *config) {
+  QList<QCommandLineOption> opts;
+  opts.append(QCommandLineOption(kCloudServerAddressOption,
+                                 "Cloud API server address", "host",
+                                 "api.cesanta.com"));
+  opts.append(QCommandLineOption(kCloudFrontendUrlOption,
+                                 "URL of the cloud frontend", "URL",
+                                 "https://cloud.cesanta.com"));
+  config->addOptions(opts);
+}
 
 WizardDialog::WizardDialog(Config *config, QWidget *parent)
     : QMainWindow(parent), config_(config), prompter_(this) {
@@ -144,6 +169,9 @@ void WizardDialog::nextStep() {
       wifiName_ = ui_.s3_wifiName->currentText();
       wifiPass_ = ui_.s3_wifiPass->toPlainText();
       qInfo() << "Selected network:" << wifiName_;
+      fwc_->setConfValue(kWiFiStaEnableKey, true);
+      fwc_->setConfValue(kWiFiStaSsidKey, wifiName_);
+      fwc_->setConfValue(kWiFiStaPassKey, wifiPass_);
       break;
     }
     case Step::WiFiConnect: {
@@ -171,6 +199,8 @@ void WizardDialog::nextStep() {
       break;
     }
     case Step::Finish: {
+      QCoreApplication::quit();
+      break;
     }
     case Step::Invalid: {
       break;
@@ -217,8 +247,7 @@ void WizardDialog::currentStepChanged() {
     fwc_->doWifiSetup(wifiName_, wifiPass_);
   }
   if (ci == Step::CloudRegistration) {
-    const QString &existingId =
-        jsonLookup(devConfig_, kClubbyDeviceIdKey).toString();
+    const QString &existingId = getDevConfKey(kClubbyDeviceIdKey).toString();
     if (existingId != "") {
       qInfo() << "Existing Clubby ID:" << existingId;
       ui_.s4_existingID->setChecked(true);
@@ -229,10 +258,8 @@ void WizardDialog::currentStepChanged() {
     ui_.nextBtn->setEnabled(true);
   }
   if (ci == Step::CloudCredentials) {
-    ui_.s4_1_cloudID->setText(
-        jsonLookup(devConfig_, kClubbyDeviceIdKey).toString());
-    ui_.s4_1_psk->setText(
-        jsonLookup(devConfig_, kClubbyDevicePskKey).toString());
+    ui_.s4_1_cloudID->setText(getDevConfKey(kClubbyDeviceIdKey).toString());
+    ui_.s4_1_psk->setText(getDevConfKey(kClubbyDevicePskKey).toString());
   }
   if (ci == Step::CloudConnect) {
     ui_.s4_2_circle->hide();
@@ -246,6 +273,32 @@ void WizardDialog::currentStepChanged() {
   }
   if (ci == Step::Finish) {
     ui_.nextBtn->setText(tr("Finish"));
+    if (!ui_.s4_noCloud->isChecked()) {
+      QUrl url(config_->value(kCloudFrontendUrlOption) + kCloudDeviceClaimPath);
+      QUrlQuery q;
+      q.addQueryItem("id", cloudId_);
+      {
+        const QByteArray salt =
+            QCryptographicHash::hash(QUuid::createUuid().toByteArray(),
+                                     QCryptographicHash::Sha256)
+                .toBase64()
+                .mid(0, 16);
+        const QByteArray h = QCryptographicHash::hash(
+            salt + cloudKey_.toUtf8(), QCryptographicHash::Sha256);
+        const QString tok =
+            QString("$%1$%2$").arg(QString(salt)).arg(QString(h.toHex()));
+        q.addQueryItem("token", tok);
+      }
+      url.setQuery(q);
+      qInfo() << url.toEncoded();
+      ui_.s5_claim_link->setText(
+          tr(R"(<a href="%1">Add the device to your cloud project</a>)")
+              .arg(QString(url.toEncoded())));
+      ui_.s5_claim_link->show();
+    } else {
+      ui_.s5_claim_link->hide();
+    }
+    if (fwc_ != nullptr) fwc_->doSaveConfig();
   } else {
     ui_.nextBtn->setText(tr("Next >"));
   }
@@ -534,10 +587,8 @@ void WizardDialog::updateWiFiNetworks(QStringList networks) {
   qInfo() << "WiFi networks:" << networks;
   ui_.s3_wifiName->clear();
   networks.sort();
-  const QString &currentName =
-      jsonLookup(devConfig_, kWiFiStaSsidKey).toString();
-  const QString &currentPass =
-      jsonLookup(devConfig_, kWiFiStaPassKey).toString();
+  const QString &currentName = getDevConfKey(kWiFiStaSsidKey).toString();
+  const QString &currentPass = getDevConfKey(kWiFiStaPassKey).toString();
   int i = 0;
   int currentIndex = -1;
   for (int i = 0; i < networks.length(); i++) {
@@ -571,21 +622,26 @@ void WizardDialog::updateWiFiStatus(FWClient::WifiStatus ws) {
 
 void WizardDialog::registerDevice() {
   ui_.s4_2_title->setText(tr("REGISTERING DEVICE ..."));
-  const QString arch = jsonLookup(devConfig_, kFwArchKey).toString();
-  const QString mac = jsonLookup(devConfig_, kMacAddressKey).toString();
-  const QString fwBuild = jsonLookup(devConfig_, kFwBuildKey).toString();
-  qInfo() << "registerDevice" << kDeviceRegistrationUrl << arch << mac
-          << fwBuild;
+  const QString arch = getDevVar(kFwArchVar).toString();
+  const QString mac = getDevVar(kMacAddressVar).toString();
+  const QString fwBuild = getDevVar(kFwBuildVar).toString();
+  const QString url =
+      config_->value(kCloudFrontendUrlOption) + kCloudDeviceRegistrationPath;
+  qInfo() << "registerDevice" << url << arch << mac << fwBuild;
   if (mac == "" || arch == "") {
     const QString msg = tr("Did not find device arch and MAC address");
     qCritical() << msg;
     QMessageBox::critical(this, tr("Error"), msg);
     return;
   }
-  QUrl url(kDeviceRegistrationUrl);
   QNetworkRequest req(url);
   req.setHeader(QNetworkRequest::ContentTypeHeader,
                 "application/x-www-form-urlencoded");
+  QUrlQuery q;
+  q.addQueryItem("arch", arch);
+  q.addQueryItem("mac", mac);
+  q.addQueryItem("fw", fwBuild);
+  q.addQueryItem("fnc", build_id);
   const QByteArray params =
       QString("arch=%1&mac=%2&fw=%3").arg(arch).arg(mac).arg(fwBuild).toUtf8();
   registerDeviceReply_ = nam_.post(req, params);
@@ -629,11 +685,12 @@ void WizardDialog::testCloudConnection(const QString &cloudId,
   ui_.nextBtn->setEnabled(false);
   ui_.s4_2_circle->hide();
   ui_.s4_2_connected->hide();
-  qInfo() << "testCloudConnection" << cloudId << cloudKey;
+  const QString &serverAddress = config_->value(kCloudServerAddressOption);
+  qInfo() << "testCloudConnection" << serverAddress << cloudId << cloudKey;
   QJsonObject cfg;
   cfg["device_id"] = cloudId_;
   cfg["device_psk"] = cloudKey_;
-  cfg["server_address"] = "api.cesanta.com";
+  cfg["server_address"] = serverAddress;
   fwc_->testClubbyConfig(cfg);
 }
 
@@ -643,6 +700,11 @@ void WizardDialog::clubbyStatus(int status) {
     ui_.nextBtn->setEnabled(true);
     ui_.s4_2_circle->show();
     ui_.s4_2_connected->show();
+    fwc_->setConfValue(kClubbyConnectOnBootKey, true);
+    fwc_->setConfValue(kClubbyServerAddressKey,
+                       config_->value(kCloudServerAddressOption));
+    fwc_->setConfValue(kClubbyDeviceIdKey, cloudId_);
+    fwc_->setConfValue(kClubbyDevicePskKey, cloudKey_);
   } else {
     const QString msg(tr("Cloud connection failed"));
     qCritical() << msg;
@@ -653,6 +715,14 @@ void WizardDialog::clubbyStatus(int status) {
 void WizardDialog::showPrompt(
     QString text, QList<QPair<QString, Prompter::ButtonRole>> buttons) {
   emit showPromptResult(prompter_.doShowPrompt(text, buttons));
+}
+
+QJsonValue WizardDialog::getDevConfKey(const QString &key) {
+  return jsonLookup(devConfig_, QString("conf.%1").arg(key));
+}
+
+QJsonValue WizardDialog::getDevVar(const QString &var) {
+  return jsonLookup(devConfig_, QString("ro_vars.%1").arg(var));
 }
 
 void WizardDialog::closeEvent(QCloseEvent *event) {

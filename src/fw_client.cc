@@ -23,6 +23,7 @@
 #define CLUBBY_STATUS_TYPE "cs"
 
 namespace {
+
 const char kPromptEnd[] = "] $ ";
 
 QString jsEscapeString(const QString &s) {
@@ -31,14 +32,11 @@ QString jsEscapeString(const QString &s) {
   escaped = escaped.replace("'", R"(\')");
   return QString("'%1'").arg(escaped);
 }
-}
+
+}  // namespace
 
 FWClient::FWClient(QSerialPort *port)
-    : beginMarker_(BEGIN_MARKER),
-      endMarker_(END_MARKER),
-      port_(port),
-      connected_(false),
-      connectAttempt_(0) {
+    : beginMarker_(BEGIN_MARKER), endMarker_(END_MARKER), port_(port) {
   connect(port_, &QSerialPort::readyRead, this, &FWClient::portReadyRead);
 }
 
@@ -59,7 +57,7 @@ void FWClient::doWifiScan() {
   cmdQueue_.push_back(
       R"(Wifi.scan(function (a) {)" BEGIN_MARKER_JS
       R"(print(JSON.stringify({t:')" WIFI_SCAN_RESULT_TYPE
-      R"(', r:a}));)" END_MARKER_JS "});\n");
+      R"(', r:a}));)" END_MARKER_JS "});");
   sendCommand();
 }
 
@@ -68,7 +66,7 @@ void FWClient::doGetConfig() {
   qInfo() << "doGetConfig";
   cmdQueue_.push_back(BEGIN_MARKER_JS
                       R"(print(JSON.stringify({t:')" SYS_CONFIG_TYPE
-                      R"(', sys:Sys}));)" END_MARKER_JS "\n");
+                      R"(', sys:Sys}));)" END_MARKER_JS);
   sendCommand();
 }
 
@@ -78,8 +76,8 @@ void FWClient::doWifiSetup(const QString &ssid, const QString &password) {
   cmdQueue_.push_back(
       R"(Wifi.changed(function (s) {)" BEGIN_MARKER_JS
       R"(print(JSON.stringify({t:')" WIFI_STATUS_TYPE
-      R"(', ws:s}));)" END_MARKER_JS "});\n");
-  cmdQueue_.push_back(QString("Wifi.setup(%1, %2);\n")
+      R"(', ws:s}));)" END_MARKER_JS "});");
+  cmdQueue_.push_back(QString("Wifi.setup(%1, %2);")
                           .arg(jsEscapeString(ssid))
                           .arg(jsEscapeString(password))
                           .toUtf8());
@@ -89,22 +87,64 @@ void FWClient::doWifiSetup(const QString &ssid, const QString &password) {
 void FWClient::testClubbyConfig(const QJsonObject &cfg) {
   if (!connected_) return;
   QJsonObject cf(cfg);
+  clubbyTestId_++;
   cf["connect"] = false;
   cf["reconnect_timeout_max"] = 0;
-  qInfo() << "testClubbyConfig" << cf;
+  qInfo() << "testClubbyConfig" << clubbyTestId_ << cf;
   QJsonDocument doc(cf);
-  cmdQueue_.push_back(QString("c = new Clubby(%1);\n")
+  cmdQueue_.push_back(QString("c = new Clubby(%1);")
                           .arg(QString(doc.toJson(QJsonDocument::Compact)))
                           .toUtf8());
-  cmdQueue_.push_back(
-      R"(c.onopen(function (s) {)" BEGIN_MARKER_JS
-      R"(print(JSON.stringify({t:')" CLUBBY_STATUS_TYPE
-      R"(', cs:1}));)" END_MARKER_JS "});\n");
-  cmdQueue_.push_back(
-      R"(c.onclose(function (s) {)" BEGIN_MARKER_JS
-      R"(print(JSON.stringify({t:')" CLUBBY_STATUS_TYPE
-      R"(', cs:0}));)" END_MARKER_JS "});\n");
-  cmdQueue_.push_back("c.connect();\n");
+  cmdQueue_.push_back(QString(R"(c.onopen(function (s) {)" BEGIN_MARKER_JS
+                              R"(print(JSON.stringify({t:')" CLUBBY_STATUS_TYPE
+                              R"(', id:%1, cs:1}));)" END_MARKER_JS
+                              "});").arg(clubbyTestId_));
+  cmdQueue_.push_back(QString(R"(c.onclose(function (s) {)" BEGIN_MARKER_JS
+                              R"(print(JSON.stringify({t:')" CLUBBY_STATUS_TYPE
+                              R"(', id:%1, cs:0}));)" END_MARKER_JS
+                              "});").arg(clubbyTestId_));
+  cmdQueue_.push_back("c.connect();");
+  sendCommand();
+}
+
+void FWClient::setConfValue(const QString &k, const QJsonValue &v) {
+  if (!connected_) return;
+  QString vs;
+  switch (v.type()) {
+    case QJsonValue::Null: {
+      vs = "null";
+      break;
+    }
+    case QJsonValue::Bool: {
+      vs = (v.toBool() ? "true" : "false");
+      break;
+    }
+    case QJsonValue::Double: {
+      if (v.toDouble() == v.toInt()) {
+        vs = QString("%1").arg(v.toInt());
+      } else {
+        vs = QString("%1").arg(v.toDouble());
+      }
+      break;
+    }
+    case QJsonValue::String: {
+      vs = jsEscapeString(v.toString());
+      break;
+    }
+    default:
+      // Unsupported value.
+      return;
+  }
+  const QString cmd = QString("Sys.conf.%1 = %2;").arg(k).arg(vs);
+  qInfo() << cmd;
+  cmdQueue_.push_back(cmd);
+  sendCommand();
+}
+
+void FWClient::doSaveConfig() {
+  if (!connected_) return;
+  qInfo() << "doSaveConfig";
+  cmdQueue_.push_back("Sys.conf.save();");
   sendCommand();
 }
 
@@ -129,18 +169,18 @@ void FWClient::portReadyRead() {
     buf_ += buf;
   }
   if (buf_.endsWith(kPromptEnd)) {
+    sending_ = false;
     if (!connected_) {
       connected_ = true;
+      buf_.clear();
       qInfo() << "Connected to FW";
       emit connectResult(util::Status::OK);
     }
-    if (!cmdQueue_.isEmpty()) sendCommand();
-    buf_.clear();
   }
   while (true) {
     const int beginIndex = buf_.indexOf(beginMarker_);
     const int endIndex = buf_.indexOf(endMarker_);
-    if (beginIndex < 0 || endIndex < beginIndex) return;
+    if (beginIndex < 0 || endIndex < beginIndex) break;
     qDebug() << beginIndex << endIndex;
     const QByteArray content =
         buf_.mid(beginIndex + beginMarker_.length(),
@@ -149,13 +189,16 @@ void FWClient::portReadyRead() {
     parseMessage(content);
     buf_ = buf_.mid(endIndex + endMarker_.length());
   }
+  if (!cmdQueue_.isEmpty()) sendCommand();
 }
 
 void FWClient::sendCommand() {
-  const QByteArray cmd = cmdQueue_.front().toUtf8();
+  if (sending_) return;
+  const QByteArray cmd = (cmdQueue_.front() + "\n").toUtf8();
   cmdQueue_.pop_front();
   qDebug() << "Cmd:" << cmd;
   port_->write(cmd);
+  sending_ = true;
 }
 
 void FWClient::parseMessage(const QByteArray &msg) {
@@ -199,8 +242,13 @@ void FWClient::parseMessage(const QByteArray &msg) {
   } else if (type == SYS_CONFIG_TYPE) {
     emit getConfigResult(o["sys"].toObject());
   } else if (type == CLUBBY_STATUS_TYPE) {
-    emit clubbyStatus(o["cs"].toInt());
+    if (o["id"].toInt() == clubbyTestId_) {
+      clubbyTestId_++;
+      emit clubbyStatus(o["cs"].toInt());
+    } else {
+      // Old test, ignore.
+    }
   } else {
-    qCritical() << "Unknown messgae type:" << type << msg;
+    qCritical() << "Unknown message type:" << type << msg;
   }
 }

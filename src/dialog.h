@@ -44,6 +44,7 @@ class MainDialog : public QMainWindow {
   Q_OBJECT
 
  public:
+  static void addOptions(Config *config);
   MainDialog(Config *config, QWidget *parent = 0);
 
  protected:

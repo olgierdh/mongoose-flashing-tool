@@ -54,6 +54,23 @@ const int kDefaultConsoleBaudRate = 115200;
 
 }  // namespace
 
+// static
+void MainDialog::addOptions(Config *config) {
+  QList<QCommandLineOption> opts;
+  opts.append(QCommandLineOption(
+      "console-baud-rate", "Baud rate to use with the console serial port.",
+      "number", "115200"));
+  opts.append(QCommandLineOption(
+      "console-line-count",
+      "Maximum number of lines to keep in console window.", "count", "4096"));
+  opts.append(QCommandLineOption(
+      "console-log",
+      "If set, bytes read from a serial port in console mode will be "
+      "appended to the given file.",
+      "file"));
+  config->addOptions(opts);
+}
+
 MainDialog::MainDialog(Config *config, QWidget *parent)
     : QMainWindow(parent),
       config_(config),

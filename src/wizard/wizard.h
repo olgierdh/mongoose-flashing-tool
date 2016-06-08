@@ -88,6 +88,8 @@ signals:
 
   Step currentStep() const;
 
+  util::Status doConnect();
+
   QJsonValue getDevConfKey(const QString &key);
   QJsonValue getDevVar(const QString &var);
 
@@ -113,6 +115,7 @@ signals:
   QNetworkReply *registerDeviceReply_;
 
   QString selectedPlatform_;
+  QString selectedPort_;
   QUrl selectedFirmwareURL_;
   QString wifiName_;
   QString wifiPass_;

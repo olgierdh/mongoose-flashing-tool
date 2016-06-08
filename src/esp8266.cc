@@ -51,6 +51,14 @@ const int kDefaultFlashBaudRate = 230400;
 /* Last 16K of flash are reserved for system params. */
 const quint32 kSystemParamsAreaSize = 16 * 1024;
 
+#define FLASHING_MSG                                             \
+  "Failed to talk to bootloader. See <a "                        \
+  "href=\"https://github.com/cesanta/mongoose-iot/blob/master/"  \
+  "fw/platforms/esp8266/flashing.md\">wiring instructions</a>. " \
+  "Alternatively, put the device into flashing mode "            \
+  "(GPIO0 = 0, reset) manually and "                             \
+  "retry now."
+
 class FlasherImpl : public Flasher {
   Q_OBJECT
  public:
@@ -286,13 +294,8 @@ class FlasherImpl : public Flasher {
       st = rom.connect();
       if (st.ok()) break;
       qCritical() << st;
-      QString msg =
-          tr("Failed to talk to bootloader. See <a "
-             "href=\"https://github.com/cesanta/mongoose-iot/blob/master/"
-             "fw/platforms/esp8266/flashing.md\">wiring instructions</a>. "
-             "Alternatively, put the device into flashing mode manually and "
-             "retry now.\n\nError: %1")
-              .arg(QString::fromUtf8(st.ToString().c_str()));
+      QString msg = tr(FLASHING_MSG "\n\nError: %1")
+                        .arg(QString::fromUtf8(st.ToString().c_str()));
       int answer =
           prompter_->Prompt(msg, {{tr("Retry"), Prompter::ButtonRole::No},
                                   {tr("Cancel"), Prompter::ButtonRole::Yes}});
@@ -653,8 +656,7 @@ class ESP8266HAL : public HAL {
     ESPROMClient rom(port_, port_);
 
     if (!rom.connect().ok()) {
-      return util::Status(util::error::UNAVAILABLE,
-                          "Failed to reboot into bootloader");
+      return QS(util::error::UNAVAILABLE, FLASHING_MSG);
     }
 
     auto mac = rom.readMAC();

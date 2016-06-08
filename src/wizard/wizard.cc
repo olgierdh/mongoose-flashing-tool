@@ -110,48 +110,59 @@ WizardDialog::Step WizardDialog::currentStep() const {
   return static_cast<Step>(ui_.steps->currentIndex());
 }
 
+util::Status WizardDialog::doConnect() {
+  hal_.reset();
+  port_.reset();
+  auto sp = connectSerial(QSerialPortInfo(selectedPort_), 115200);
+  if (!sp.ok()) {
+    return QS(util::error::UNAVAILABLE,
+              tr("Error opening %1: %2")
+                  .arg(selectedPort_)
+                  .arg(sp.status().ToString().c_str()));
+  }
+  port_.reset(sp.ValueOrDie());
+  qInfo() << "Probing" << selectedPlatform_ << "@" << selectedPort_;
+  if (selectedPlatform_ == "ESP8266") {
+    hal_ = ESP8266::HAL(port_.get());
+  } else if (selectedPlatform_ == "CC3200") {
+    hal_ = CC3200::HAL(port_.get());
+  } else {
+    port_.reset();
+    return QS(util::error::INVALID_ARGUMENT,
+              tr("Unknown platform: %1").arg(selectedPlatform_));
+  }
+  util::Status st = hal_->probe();
+  if (!st.ok()) {
+    return QSP(
+        tr("Did not find %1 @ %2").arg(selectedPlatform_).arg(selectedPort_),
+        st);
+    hal_.reset();
+    port_.reset();
+  }
+  qInfo() << "Probe successful";
+  return util::Status::OK;
+}
+
 void WizardDialog::nextStep() {
   const Step ci = currentStep();
   Step ni = Step::Invalid;
   switch (ci) {
     case Step::Connect: {
       selectedPlatform_ = ui_.platformSelector->currentText();
-      const QString selectedPort = ui_.portSelector->currentText();
-      if (port_ == nullptr || port_->portName() != selectedPort) {
-        port_.reset();
-        auto sp = connectSerial(QSerialPortInfo(selectedPort), 115200);
-        if (!sp.ok()) {
-          QMessageBox::critical(this, tr("Error"),
-                                tr("Error opening %1: %2")
-                                    .arg(selectedPort)
-                                    .arg(sp.status().ToString().c_str()));
-        } else {
-          port_.reset(sp.ValueOrDie());
-        }
-      }
-      if (port_ != nullptr) {
-        qInfo() << "Probing" << selectedPlatform_ << "@" << selectedPort;
-        if (selectedPlatform_ == "ESP8266") {
-          hal_ = ESP8266::HAL(port_.get());
-        } else if (selectedPlatform_ == "CC3200") {
-          hal_ = CC3200::HAL(port_.get());
-        } else {
-          qFatal("Unknown platform: %s",
-                 selectedPlatform_.toStdString().c_str());
-        }
-        util::Status st = hal_->probe();
+      selectedPort_ = ui_.portSelector->currentText();
+      QString msg;
+      do {
+        const util::Status st = doConnect();
         if (st.ok()) {
           ni = Step::FirmwareSelection;
-          qInfo() << "Probe successful";
-        } else {
-          const QString msg = tr("Did not find %1 @ %2")
-                                  .arg(selectedPlatform_)
-                                  .arg(selectedPort);
-          qCritical() << msg;
-          QMessageBox::critical(this, tr("Error"), msg);
-          hal_.reset();
+          break;
         }
-      }
+        msg = st.ToString().c_str();
+        qCritical() << msg;
+      } while (
+          QMessageBox::critical(this, tr("Error"), msg,
+                                QMessageBox::Retry | QMessageBox::Cancel) ==
+          QMessageBox::Retry);
       break;
     }
     case Step::FirmwareSelection: {

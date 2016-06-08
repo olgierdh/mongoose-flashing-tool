@@ -50,7 +50,7 @@
         </font>
        </property>
        <property name="text">
-        <string>Flash’n’Chips</string>
+        <string>Mongoose Flashing Tool</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignCenter</set>

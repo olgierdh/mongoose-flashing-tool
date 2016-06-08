@@ -65,6 +65,8 @@ class WizardDialog : public QMainWindow {
   void testCloudConnection(const QString &cloudId, const QString &cloudKey);
   void clubbyStatus(int status);
 
+  void claimBtnClicked();
+
 signals:
   void showPromptResult(int clicked_button);
 

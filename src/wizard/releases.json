@@ -1,12 +1,6 @@
 {
   "releases": [
     {
-      "name": "Local",
-      "locs": {
-        "ESP8266": "../fw/platforms/esp8266/firmware/mongoose-iot-esp8266-last.zip"
-      }
-    },
-    {
       "name": "Latest Release",
       "locs": {
         "ESP8266": "https://github.com/cesanta/mongoose-iot/releases/download/beta4/mongoose-iot-esp8266-beta4.zip",
@@ -16,7 +10,8 @@
     {
       "name": "Development",
       "locs": {
-        "ESP8266": "https://backend.cesanta.com/devel/mongoose-iot-esp8266-last.zip"
+        "ESP8266": "https://backend.cesanta.com/devel/mongoose-iot-esp8266-last.zip",
+        "CC3200": "https://backend.cesanta.com/devel/mongoose-iot-cc3200-last.zip"
       }
     }
   ]

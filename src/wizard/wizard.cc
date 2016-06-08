@@ -4,6 +4,7 @@
 #include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDebug>
+#include <QDesktopServices>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -98,6 +99,9 @@ WizardDialog::WizardDialog(Config *config, QWidget *parent)
   connect(this, &WizardDialog::showPromptResult, &prompter_,
           &GUIPrompter::showPromptResult);
 
+  connect(ui_.s5_claimBtn, &QPushButton::clicked, this,
+          &WizardDialog::claimBtnClicked);
+
   QTimer::singleShot(10, this, &WizardDialog::currentStepChanged);
   QTimer::singleShot(10, this, &WizardDialog::updateReleaseInfo);
 }
@@ -151,6 +155,8 @@ void WizardDialog::nextStep() {
       break;
     }
     case Step::FirmwareSelection: {
+      settings_.setValue("wizard/selectedFw",
+                         ui_.firmwareSelector->currentText());
       selectedFirmwareURL_ = ui_.firmwareSelector->currentText();
       if (selectedFirmwareURL_.scheme() == "") {
         selectedFirmwareURL_ = ui_.firmwareSelector->currentData().toString();
@@ -272,31 +278,7 @@ void WizardDialog::currentStepChanged() {
   }
   if (ci == Step::Finish) {
     ui_.nextBtn->setText(tr("Finish"));
-    if (!ui_.s4_noCloud->isChecked()) {
-      QUrl url(config_->value(kCloudFrontendUrlOption) + kCloudDeviceClaimPath);
-      QUrlQuery q;
-      q.addQueryItem("id", cloudId_);
-      {
-        const QByteArray salt =
-            QCryptographicHash::hash(QUuid::createUuid().toByteArray(),
-                                     QCryptographicHash::Sha256)
-                .toBase64()
-                .mid(0, 16);
-        const QByteArray h = QCryptographicHash::hash(
-            salt + cloudKey_.toUtf8(), QCryptographicHash::Sha256);
-        const QString tok =
-            QString("$%1$%2$").arg(QString(salt)).arg(QString(h.toHex()));
-        q.addQueryItem("token", tok);
-      }
-      url.setQuery(q);
-      qInfo() << url.toEncoded();
-      ui_.s5_claim_link->setText(
-          tr(R"(<a href="%1">Add the device to your cloud project</a>)")
-              .arg(QString(url.toEncoded())));
-      ui_.s5_claim_link->show();
-    } else {
-      ui_.s5_claim_link->hide();
-    }
+    ui_.nextBtn->setEnabled(false);
     if (fwc_ != nullptr) fwc_->doSaveConfig();
   } else {
     ui_.nextBtn->setText(tr("Next >"));
@@ -413,7 +395,6 @@ void WizardDialog::updateReleaseInfo() {
 void WizardDialog::updateFirmwareSelector() {
   const QString platform = ui_.platformSelector->currentText().toUpper();
   ui_.firmwareSelector->clear();
-  ui_.firmwareSelector->addItem(tr("<Skip Flashing>"), "");
   for (const auto &item : releases_) {
     if (!item.isObject()) continue;
     const QJsonObject &r = item.toObject();
@@ -423,6 +404,14 @@ void WizardDialog::updateFirmwareSelector() {
     if (!locs[platform].isString()) continue;
     const QString &loc = locs[platform].toString();
     ui_.firmwareSelector->addItem(name, loc);
+  }
+  ui_.firmwareSelector->addItem(tr("<Skip Flashing>"), "");
+  const QString &selected = settings_.value("wizard/selectedFw").toString();
+  for (int i = 0; i < ui_.firmwareSelector->count(); i++) {
+    if (ui_.firmwareSelector->itemText(i) == selected) {
+      ui_.firmwareSelector->setCurrentIndex(i);
+      break;
+    }
   }
   if (currentStep() == Step::FirmwareSelection) {
     ui_.nextBtn->setEnabled(ui_.firmwareSelector->currentText() != "");
@@ -703,6 +692,28 @@ void WizardDialog::clubbyStatus(int status) {
     qCritical() << msg;
     QMessageBox::critical(this, tr("Error"), msg);
   }
+}
+
+void WizardDialog::claimBtnClicked() {
+  QUrl url(config_->value(kCloudFrontendUrlOption) + kCloudDeviceClaimPath);
+  QUrlQuery q;
+  q.addQueryItem("id", cloudId_);
+  {
+    const QByteArray salt =
+        QCryptographicHash::hash(QUuid::createUuid().toByteArray(),
+                                 QCryptographicHash::Sha256)
+            .toBase64()
+            .mid(0, 16);
+    const QByteArray h = QCryptographicHash::hash(salt + cloudKey_.toUtf8(),
+                                                  QCryptographicHash::Sha256);
+    const QString tok =
+        QString("$%1$%2$").arg(QString(salt)).arg(QString(h.toHex()));
+    q.addQueryItem("token", tok);
+  }
+  url.setQuery(q);
+  qInfo() << url.toEncoded();
+  QDesktopServices::openUrl(url);
+  ui_.nextBtn->setEnabled(true);
 }
 
 void WizardDialog::showPrompt(

@@ -82,7 +82,7 @@ class ESPROMClient {
   QSerialPort *data_port_;     // Not owned
   bool connected_ = false;
   bool inverted_ = false;
-  int commandTimeoutMs_ = 200;
+  int commandTimeoutMs_ = 2000;
 
   ESPROMClient(const ESPROMClient &other) = delete;
 };

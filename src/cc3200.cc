@@ -48,7 +48,7 @@ const int kDefaultTimeoutMs = 1000;
 
 const int kStorageID = 0;
 const char kFWFilename[] = "/sys/mcuimg.bin";
-const char kFWBundleFWPartName[] = "sys_mcuimg.bin";
+const char kFWBundleFWPartNameOld[] = "sys_mcuimg.bin";  // Backward compat.
 const char kFWBundleFSPartName[] = "fs.img";
 const char kFS0Filename[] = "0.fs";
 const char kFS1Filename[] = "1.fs";
@@ -284,46 +284,49 @@ class FlasherImpl : public Flasher {
  public:
   FlasherImpl(QSerialPort *port) : port_(port){};
   util::Status setFirmware(FirmwareBundle *fw) override {
-    const auto code = fw->getPartSource(kFWBundleFWPartName);
-    if (!code.ok()) return code.status();
-    image_ = code.ValueOrDie();
-    const int kMaxSize =
-        kBlockSizes[sizeof(kBlockSizes) / sizeof(kBlockSizes[0]) - 1] * 255;
-    if (image_.length() > kMaxSize) {
-      image_.clear();
-      return util::Status(util::error::INVALID_ARGUMENT,
-                          tr("Image is too big. Maximum allowed size is %2")
-                              .arg(kMaxSize)
-                              .toStdString());
+    auto code = fw->getPartSource(kFWFilename);
+    if (!code.ok()) {
+      code = fw->getPartSource(kFWBundleFWPartNameOld);
+    }
+    if (code.ok()) {
+      const int kMaxSize =
+          kBlockSizes[sizeof(kBlockSizes) / sizeof(kBlockSizes[0]) - 1] * 255;
+      if (code.ValueOrDie().length() > kMaxSize) {
+        return util::Status(util::error::INVALID_ARGUMENT,
+                            tr("Code image is too big. Maximum size is %2")
+                                .arg(kMaxSize)
+                                .toStdString());
+      }
     }
     spiffs_image_.clear();
     const auto fs = fw->getPartSource(kFWBundleFSPartName);
     if (fs.ok()) {
       spiffs_image_ = fs.ValueOrDie();
     }
+    int codeSize = 0;
     for (const auto &p : fw->parts()) {
-      if (p.name == kFWBundleFWPartName || p.name == kFWBundleFSPartName) {
-        continue;
-      }
+      QString fileName = p.name;
+      if (fileName == kFWBundleFSPartName) continue;
+      if (fileName == kFWBundleFWPartNameOld) fileName = kFWFilename;
       const auto data = fw->getPartSource(p.name);
       if (!data.ok()) return data.status();
-      qDebug() << "Extra file:" << p.name << data.ValueOrDie().length()
-               << "bytes";
-      extra_files_[p.name] = data.ValueOrDie();
+      qDebug() << "File:" << fileName << data.ValueOrDie().length() << "bytes";
+      files_[fileName] = data.ValueOrDie();
+      if (fileName == kFWFilename) codeSize = data.ValueOrDie().length();
     }
-    qInfo() << fw->buildId() << "code" << image_.length() << "fs"
+    qInfo() << fw->buildId() << "code" << codeSize << "fs"
             << spiffs_image_.length();
     return util::Status::OK;
   }
 
   int totalBytes() const override {
     QMutexLocker lock(&lock_);
-    int r = image_.length();
+    int r = 0;
     if (spiffs_image_.length() > 0) {
       r += spiffs_image_.length() + kSPIFFSMetadataSize;
     }
-    for (const QString &f : extra_files_.keys()) {
-      r += extra_files_[f].length();
+    for (const QString &f : files_.keys()) {
+      r += files_[f].length();
     }
     return r;
   }
@@ -436,10 +439,9 @@ class FlasherImpl : public Flasher {
         return st;
       }
     }
-    emit statusMessage(tr("Uploading the firmware image..."), true);
-    st = uploadFile(image_, kFWFilename);
-    if (!st.ok()) {
-      return st;
+    for (const QString &f : files_.keys()) {
+      st = uploadFile(files_[f], f);
+      if (!st.ok()) return st;
     }
     if (spiffs_image_.length() > 0) {
       emit statusMessage(tr("Updating file system image..."), true);
@@ -447,10 +449,6 @@ class FlasherImpl : public Flasher {
       if (!st.ok()) {
         return st;
       }
-    }
-    for (const QString &f : extra_files_.keys()) {
-      st = uploadFile(extra_files_[f], f);
-      if (!st.ok()) return st;
     }
 #ifndef NO_LIBFTDI
     emit statusMessage(tr("Rebooting into firmware..."), true);
@@ -473,7 +471,7 @@ class FlasherImpl : public Flasher {
   }
 
   util::StatusOr<VersionInfo> getVersion() {
-    emit statusMessage(tr("Getting device version info..."));
+    emit statusMessage(tr("Getting device version info..."), true);
     util::Status st = sendPacket(port_, QByteArray(&kOpcodeGetVersionInfo, 1));
     if (!st.ok()) {
       return st;
@@ -493,7 +491,7 @@ class FlasherImpl : public Flasher {
   }
 
   util::StatusOr<StorageInfo> getStorageInfo() {
-    emit statusMessage(tr("Getting storage info..."));
+    emit statusMessage(tr("Getting storage info..."), true);
     QByteArray payload;
     QDataStream ps(&payload, QIODevice::WriteOnly);
     ps.setByteOrder(QDataStream::BigEndian);
@@ -749,7 +747,7 @@ class FlasherImpl : public Flasher {
     }
     int start = 0;
     while (start < bytes.length()) {
-      emit statusMessage(tr("Sending chunk 0x%1...").arg(start, 0, 16));
+      emit statusMessage(tr("Writing @ 0x%1...").arg(start, 0, 16));
       QByteArray payload;
       QDataStream ps(&payload, QIODevice::WriteOnly);
       ps.setByteOrder(QDataStream::BigEndian);
@@ -764,6 +762,7 @@ class FlasherImpl : public Flasher {
       progress_ += kFileUploadBlockSize;
       emit progress(progress_);
     }
+    emit statusMessage(tr("Upload finished."), true);
     return closeFile();
   }
 
@@ -931,9 +930,8 @@ class FlasherImpl : public Flasher {
   }
 
   mutable QMutex lock_;
-  QByteArray image_;
   QByteArray spiffs_image_;
-  QMap<QString, QByteArray> extra_files_;
+  QMap<QString, QByteArray> files_;
   QMap<QString, QByteArray> extra_spiffs_files_;
   QSerialPort *port_;
   bool merge_spiffs_ = false;

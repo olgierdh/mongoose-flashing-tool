@@ -29,7 +29,6 @@
 #endif
 
 using std::cout;
-using std::cerr;
 using std::endl;
 
 class CLIPrompterImpl : public Prompter {
@@ -76,14 +75,15 @@ void CLI::run() {
 #endif
     const auto qspi = findSerial(portName);
     if (!qspi.ok()) {
-      cerr << qspi.status() << endl;
+      qCritical() << qspi.status();
       qApp->exit(1);
+      return;
     }
     auto sp = connectSerial(qspi.ValueOrDie(), 115200);
     if (!sp.ok()) {
-      cerr << "Error opening " << portName.toStdString() << ": "
-           << sp.status().ToString();
+      qCritical() << "Error opening " << portName << ": " << sp.status();
       qApp->exit(1);
+      return;
     }
     port_.reset(sp.ValueOrDie());
   }
@@ -94,12 +94,11 @@ void CLI::run() {
   } else if (platform == "cc3200") {
     hal_ = CC3200::HAL(port_.get());
   } else if (platform == "") {
-    cerr << "Flag --platform is required." << endl;
+    qCritical() << "Flag --platform is required.";
     qApp->exit(1);
     return;
   } else {
-    cerr << "Unknown platform: " << platform.toStdString() << endl
-         << endl;
+    qCritical() << "Unknown platform: " << platform;
     parser_->showHelp(1);
   }
 
@@ -117,15 +116,14 @@ void CLI::run() {
     r = console();
     if (r.ok()) exit = false;
   } else {
-    cerr << "No action specified. " << endl
-         << endl;
+    qCritical() << "No action specified.";
     parser_->showHelp(1);
   }
   if (exit) {
     if (r.ok()) {
       exit_code = 0;
     } else {
-      cerr << r << endl;
+      qCritical() << r;
       exit_code = 1;
     }
     qApp->exit(exit_code);

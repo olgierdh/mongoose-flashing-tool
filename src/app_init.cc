@@ -129,7 +129,7 @@ util::Status initApp(int *argc, char *argv[], Config *config,
   }
   if (parser->isSet("debug")) {
     Log::setVerbosity(4);
-  } else if (parser->isSet("V")) {
+  } else {
     bool ok;
     Log::setVerbosity(parser->value("V").toInt(&ok, 10));
     if (!ok) {

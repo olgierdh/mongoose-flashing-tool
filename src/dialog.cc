@@ -339,6 +339,7 @@ util::Status MainDialog::closeSerial() {
   }
   setState(NotConnected);
   serial_port_->close();
+  hal_.reset();
   serial_port_.reset();
   return util::Status::OK;
 }

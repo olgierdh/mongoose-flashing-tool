@@ -43,6 +43,9 @@ util::Status initApp(int *argc, char *argv[], Config *config,
       "Baud rate to use with the serial port used for flashing.", "number",
       "0"));
   commonOpts.append(QCommandLineOption(
+      "console-baud-rate", "Baud rate to use with the console serial port.",
+      "number", "115200"));
+  commonOpts.append(QCommandLineOption(
       Flasher::kMergeFSOption,
       "If set, merge the device FS data with the factory image"));
   commonOpts.append(QCommandLineOption(

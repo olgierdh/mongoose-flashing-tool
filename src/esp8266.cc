@@ -191,18 +191,17 @@ class FlasherImpl : public Flasher {
   util::Status setFirmware(FirmwareBundle *fw) override {
     QMutexLocker lock(&lock_);
     for (const auto &p : fw->parts()) {
-      const QString addrStr = p.attrs["addr"];
-      if (addrStr == "") {
+      if (!p.attrs["addr"].isValid()) {
         return QS(util::error::INVALID_ARGUMENT,
                   QObject::tr("part %1 has no address specified").arg(p.name));
       }
       bool ok;
-      const quint32 addr = addrStr.toUInt(&ok, 0);
+      const quint32 addr = p.attrs["addr"].toUInt(&ok);
       if (!ok) {
         return QS(util::error::INVALID_ARGUMENT,
                   QObject::tr("part %1 has invalid address specified (%2)")
                       .arg(p.name)
-                      .arg(addrStr));
+                      .arg(p.attrs["addr"].toString()));
       }
       const auto data = fw->getPartSource(p.name);
       if (!data.ok()) return data.status();

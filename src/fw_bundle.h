@@ -11,6 +11,7 @@
 #include <QByteArray>
 #include <QMap>
 #include <QString>
+#include <QVariant>
 
 #include <common/util/statusor.h>
 
@@ -32,7 +33,7 @@ class FirmwareBundle {
 
   struct Part {
     QString name;
-    QMap<QString, QString> attrs;
+    QMap<QString, QVariant> attrs;
   };
 
   QMap<QString, Part> parts() const;

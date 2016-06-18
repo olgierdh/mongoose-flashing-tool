@@ -50,7 +50,7 @@ util::StatusOr<QByteArray> FirmwareBundle::getPartSource(
               QObject::tr("No %1 in fw bundle").arg(partName));
   }
   const Part &p = parts_[partName];
-  const QString src = p.attrs["src"];
+  const QString src = p.attrs["src"].toString();
   if (src == "") {
     return QS(util::error::INVALID_ARGUMENT,
               QObject::tr("part %1: no source specified").arg(p.name));
@@ -61,7 +61,7 @@ util::StatusOr<QByteArray> FirmwareBundle::getPartSource(
         QObject::tr("part %1: source %2 does not exist").arg(p.name).arg(src));
   }
   const QByteArray &data = blobs_[src];
-  const QString &expected_digest = p.attrs["cs_sha1"].toLower();
+  const QString &expected_digest = p.attrs["cs_sha1"].toString().toLower();
   if (expected_digest == "") {
     return QS(util::error::INVALID_ARGUMENT,
               QObject::tr("part %1: missing SHA1 digest").arg(p.name));

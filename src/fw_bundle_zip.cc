@@ -108,7 +108,7 @@ util::Status ZipFWBundle::readManifest() {
       Part p;
       p.name = partName;
       for (const QString &attr : jsonPart.keys()) {
-        p.attrs[attr] = jsonPart[attr].toString();
+        p.attrs[attr] = jsonPart[attr].toVariant();
       }
       parts_[partName] = p;
     }

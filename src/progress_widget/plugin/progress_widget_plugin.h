@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef CS_FNC_SRC_PROGRESS_WIDGET_PROGRESS_WIDGET_PLUGIN_H_
-#define CS_FNC_SRC_PROGRESS_WIDGET_PROGRESS_WIDGET_PLUGIN_H_
+#ifndef CS_FNC_SRC_PROGRESS_WIDGET_PLUGIN_PROGRESS_WIDGET_PLUGIN_H_
+#define CS_FNC_SRC_PROGRESS_WIDGET_PLUGIN_PROGRESS_WIDGET_PLUGIN_H_
 
 #include <QtUiPlugin/QDesignerCustomWidgetInterface>
 
@@ -33,4 +33,4 @@ class ProgressWidgetPlugin : public QObject,
   bool initialized_ = false;
 };
 
-#endif /* CS_FNC_SRC_PROGRESS_WIDGET_PROGRESS_WIDGET_PLUGIN_H_ */
+#endif /* CS_FNC_SRC_PROGRESS_WIDGET_PLUGIN_PROGRESS_WIDGET_PLUGIN_H_ */

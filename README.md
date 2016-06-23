@@ -1,7 +1,12 @@
-# Flashnchips
+# Mongoose Flashing Tool
 
-Flashnchips (also called FnC, pronounced as /ˈfæn.(t)si/) is the Mongoose IoT Platform flashing tool.
-It is designed to be simple, but provide advanced options via command-line flags.
+Mongoose Flashing Tool (also called MFT) is the
+[Mongoose IoT Platform](https://github.com/cesanta/mongoose-iot)
+flashing tool.
+It is designed to be a simple wizard tool for flashing Mongoose Firmware
+onto the target board and connect it with the
+[Mongoose Cloud](https://mongoose-iot.com).
+Also, MFT provides advanced options via command-line flags.
 
 ## EP8266
 
@@ -17,7 +22,7 @@ described [here](http://energia.nu/cc3200guide/).
 
 ## Firmware format
 
-Flashnchips expects firmware bundles as ZIP files.
+MFT expects firmware bundles as ZIP files.
 ZIP archive must contain a file called `manifest.json`, which descibes firmware
 contents.
 
@@ -62,7 +67,7 @@ can be used to generate the manifest.
 
 ### Building
 
-Flashnchips requires:
+MFT requires:
 
 - Qt 5
 - libftdi
@@ -130,8 +135,6 @@ $ make -f Makefile.release mac
 
 # Contributions
 
-People who have agreed to the
+To submit contributions, sign
 [Cesanta CLA](https://docs.cesanta.com/contributors_la.shtml)
-can make contributions. Note that the CLA isn't a copyright
-_assigment_ but rather a copyright _license_.
-You retain the copyright on your contributions.
+and send GitHub pull request. You retain the copyright on your contributions.

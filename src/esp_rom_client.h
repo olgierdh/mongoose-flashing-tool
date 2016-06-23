@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef CS_FNC_SRC_ESP_ROM_CLIENT_H_
-#define CS_FNC_SRC_ESP_ROM_CLIENT_H_
+#ifndef CS_MFT_SRC_ESP_ROM_CLIENT_H_
+#define CS_MFT_SRC_ESP_ROM_CLIENT_H_
 
 #include <QByteArray>
 #include <QSerialPort>
@@ -87,4 +87,4 @@ class ESPROMClient {
   ESPROMClient(const ESPROMClient &other) = delete;
 };
 
-#endif /* CS_FNC_SRC_ESP_ROM_CLIENT_H_ */
+#endif /* CS_MFT_SRC_ESP_ROM_CLIENT_H_ */

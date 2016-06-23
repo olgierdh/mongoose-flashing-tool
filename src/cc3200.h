@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef CS_FNC_SRC_CC3200_H_
-#define CS_FNC_SRC_CC3200_H_
+#ifndef CS_MFT_SRC_CC3200_H_
+#define CS_MFT_SRC_CC3200_H_
 
 #include <memory>
 
@@ -24,4 +24,4 @@ extern const char kFormatFailFS[];
 
 }  // namespace CC3200
 
-#endif /* CS_FNC_SRC_CC3200_H_ */
+#endif /* CS_MFT_SRC_CC3200_H_ */

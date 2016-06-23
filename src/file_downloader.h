@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef CS_FNC_SRC_FILE_DOWNLOADER_H_
-#define CS_FNC_SRC_FILE_DOWNLOADER_H_
+#ifndef CS_MFT_SRC_FILE_DOWNLOADER_H_
+#define CS_MFT_SRC_FILE_DOWNLOADER_H_
 
 #include <memory>
 
@@ -47,4 +47,4 @@ signals:
   util::Status status_;
 };
 
-#endif /* CS_FNC_SRC_FILE_DOWNLOADER_H_ */
+#endif /* CS_MFT_SRC_FILE_DOWNLOADER_H_ */

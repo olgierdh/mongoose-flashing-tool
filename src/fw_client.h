@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef CS_FNC_SRC_FW_CLIENT_H_
-#define CS_FNC_SRC_FW_CLIENT_H_
+#ifndef CS_MFT_SRC_FW_CLIENT_H_
+#define CS_MFT_SRC_FW_CLIENT_H_
 
 #include <QByteArray>
 #include <QJsonObject>
@@ -68,4 +68,4 @@ signals:
   QStringList cmdQueue_;
 };
 
-#endif /* CS_FNC_SRC_FW_CLIENT_H_ */
+#endif /* CS_MFT_SRC_FW_CLIENT_H_ */

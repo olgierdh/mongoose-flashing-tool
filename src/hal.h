@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef CS_FNC_SRC_HAL_H_
-#define CS_FNC_SRC_HAL_H_
+#ifndef CS_MFT_SRC_HAL_H_
+#define CS_MFT_SRC_HAL_H_
 
 #include <memory>
 
@@ -25,4 +25,4 @@ class HAL {
   virtual util::Status reboot() = 0;
 };
 
-#endif /* CS_FNC_SRC_HAL_H_ */
+#endif /* CS_MFT_SRC_HAL_H_ */

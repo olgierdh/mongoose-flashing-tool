@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef CS_FNC_SRC_ESP_FLASHER_CLIENT_H_
-#define CS_FNC_SRC_ESP_FLASHER_CLIENT_H_
+#ifndef CS_MFT_SRC_ESP_FLASHER_CLIENT_H_
+#define CS_MFT_SRC_ESP_FLASHER_CLIENT_H_
 
 #include <QObject>
 #include <QSerialPort>
@@ -66,4 +66,4 @@ signals:
   qint32 oldBaudRate_ = 0;
 };
 
-#endif /* CS_FNC_SRC_ESP_FLASHER_CLIENT_H_ */
+#endif /* CS_MFT_SRC_ESP_FLASHER_CLIENT_H_ */

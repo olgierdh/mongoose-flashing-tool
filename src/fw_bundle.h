@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef CS_FNC_SRC_FW_BUNDLE_H_
-#define CS_FNC_SRC_FW_BUNDLE_H_
+#ifndef CS_MFT_SRC_FW_BUNDLE_H_
+#define CS_MFT_SRC_FW_BUNDLE_H_
 
 #include <memory>
 
@@ -52,4 +52,4 @@ class FirmwareBundle {
 util::StatusOr<std::unique_ptr<FirmwareBundle>> NewZipFWBundle(
     const QString &zipFileName);
 
-#endif /* CS_FNC_SRC_FW_BUNDLE_H_ */
+#endif /* CS_MFT_SRC_FW_BUNDLE_H_ */

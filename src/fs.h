@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef CS_FNC_SRC_FS_H_
-#define CS_FNC_SRC_FS_H_
+#ifndef CS_MFT_SRC_FS_H_
+#define CS_MFT_SRC_FS_H_
 
 #include <map>
 #include <memory>
@@ -64,4 +64,4 @@ util::StatusOr<QByteArray> mergeFiles(QByteArray old_fs_image,
 util::StatusOr<QByteArray> mergeFilesystems(QByteArray old_fs_image,
                                             QByteArray new_fs_image);
 
-#endif /* CS_FNC_SRC_FS_H_ */
+#endif /* CS_MFT_SRC_FS_H_ */

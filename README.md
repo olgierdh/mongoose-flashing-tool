@@ -64,7 +64,7 @@ Example (ESP8266):
 }
 ```
 
-A [script](https://github.com/cesanta/fnc/blob/master/common/tools/fw_meta.py)
+A [script](https://github.com/cesanta/mft/blob/master/common/tools/fw_meta.py)
 can be used to generate the manifest.
 
 # Contributions

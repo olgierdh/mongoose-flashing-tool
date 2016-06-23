@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef CS_FNC_SRC_DIALOG_H_
-#define CS_FNC_SRC_DIALOG_H_
+#ifndef CS_MFT_SRC_DIALOG_H_
+#define CS_MFT_SRC_DIALOG_H_
 
 #include <memory>
 
@@ -146,4 +146,4 @@ signals:
   Ui::MainWindow ui_;
 };
 
-#endif /* CS_FNC_SRC_DIALOG_H_ */
+#endif /* CS_MFT_SRC_DIALOG_H_ */

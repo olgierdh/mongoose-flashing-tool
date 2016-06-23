@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef CS_FNC_SRC_LOG_VIEWER_H_
-#define CS_FNC_SRC_LOG_VIEWER_H_
+#ifndef CS_MFT_SRC_LOG_VIEWER_H_
+#define CS_MFT_SRC_LOG_VIEWER_H_
 
 #include <memory>
 
@@ -36,4 +36,4 @@ signals:
   bool first_ = true;
 };
 
-#endif /* CS_FNC_SRC_LOG_VIEWER_H_ */
+#endif /* CS_MFT_SRC_LOG_VIEWER_H_ */

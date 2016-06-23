@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef CS_FNC_SRC_PROMPTER_H_
-#define CS_FNC_SRC_PROMPTER_H_
+#ifndef CS_MFT_SRC_PROMPTER_H_
+#define CS_MFT_SRC_PROMPTER_H_
 
 #include <QList>
 #include <QObject>
@@ -27,4 +27,4 @@ class Prompter : public QObject {
   }
 };
 
-#endif /* CS_FNC_SRC_PROMPTER_H_ */
+#endif /* CS_MFT_SRC_PROMPTER_H_ */

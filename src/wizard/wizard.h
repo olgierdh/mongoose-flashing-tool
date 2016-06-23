@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef CS_FNC_SRC_WIZARD_WIZARD_H_
-#define CS_FNC_SRC_WIZARD_WIZARD_H_
+#ifndef CS_MFT_SRC_WIZARD_WIZARD_H_
+#define CS_MFT_SRC_WIZARD_WIZARD_H_
 
 #include <QDebug>
 #include <QJsonArray>
@@ -129,4 +129,4 @@ signals:
   friend QDebug &operator<<(QDebug &d, const Step s);
 };
 
-#endif /* CS_FNC_SRC_WIZARD_WIZARD_H_ */
+#endif /* CS_MFT_SRC_WIZARD_WIZARD_H_ */

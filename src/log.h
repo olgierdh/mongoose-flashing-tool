@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef CS_FNC_SRC_LOG_H_
-#define CS_FNC_SRC_LOG_H_
+#ifndef CS_MFT_SRC_LOG_H_
+#define CS_MFT_SRC_LOG_H_
 
 #include <iostream>
 
@@ -41,4 +41,4 @@ EntrySource *entrySource();
 
 }  // namespace Log
 
-#endif /* CS_FNC_SRC_LOG_H_ */
+#endif /* CS_MFT_SRC_LOG_H_ */

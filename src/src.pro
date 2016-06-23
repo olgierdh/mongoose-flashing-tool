@@ -1,5 +1,5 @@
 TEMPLATE = app
-TARGET = "FNC"
+TARGET = "MFT"
 INCLUDEPATH += .
 QT += serialport network
 CONFIG += c++11

@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef CS_FNC_SRC_ESP8266_H_
-#define CS_FNC_SRC_ESP8266_H_
+#ifndef CS_MFT_SRC_ESP8266_H_
+#define CS_MFT_SRC_ESP8266_H_
 
 #include <memory>
 
@@ -31,4 +31,4 @@ std::unique_ptr<HAL> HAL(QSerialPort *port);
 
 }  // namespace ESP8266
 
-#endif /* CS_FNC_SRC_ESP8266_H_ */
+#endif /* CS_MFT_SRC_ESP8266_H_ */

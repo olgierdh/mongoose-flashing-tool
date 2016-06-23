@@ -3,8 +3,8 @@
  * All rights reserved
  */
 
-#ifndef CS_FNC_SRC_PROGRESS_WIDGET_PROGRESS_WIDGET_H_
-#define CS_FNC_SRC_PROGRESS_WIDGET_PROGRESS_WIDGET_H_
+#ifndef CS_MFT_SRC_PROGRESS_WIDGET_PROGRESS_WIDGET_H_
+#define CS_MFT_SRC_PROGRESS_WIDGET_PROGRESS_WIDGET_H_
 
 #include <QWidget>
 
@@ -24,4 +24,4 @@ class ProgressWidget : public QWidget {
   double total_ = 1;
 };
 
-#endif /* CS_FNC_SRC_PROGRESS_WIDGET_PROGRESS_WIDGET_H_ */
+#endif /* CS_MFT_SRC_PROGRESS_WIDGET_PROGRESS_WIDGET_H_ */

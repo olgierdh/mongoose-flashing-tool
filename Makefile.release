@@ -31,6 +31,7 @@ endif
 
 BIN_DIR = ./bin
 OUT_DIR = ./out
+QMAKE_ARGS = -config static -config release
 
 .PHONY: clean mac ubuntu32 ubuntu64 win
 
@@ -54,7 +55,7 @@ $(BIN_DIR) $(OUT_DIR):
 	mkdir -p $@
 
 $(BIN_DIR)/FNC.app: $(BIN_DIR)
-	qmake
+	qmake $(QMAKE_ARGS)
 	nice make -j $(shell sysctl -n hw.ncpu)
 	if [ z$(SIGN) != z ]; then \
 	  macdeployqt src/FNC.app -codesign=$(SIGN); \
@@ -66,11 +67,11 @@ $(BIN_DIR)/FNC.app: $(BIN_DIR)
 	make distclean
 
 $(BIN_DIR)/FNC.exe: $(BIN_DIR)
-	docker run --rm -it -v $(REPO_ROOT):/src docker.cesanta.com:5000/build_base bash -lcx '\
+	docker run --rm -it -v $(REPO_ROOT):/src docker.cesanta.com:5000/ourci -lcex '\
 	  cd /src/$(FNC_SUBDIR)/src && \
 	  /src/common/tools/fw_meta.py gen_build_info \
 	    --tag_as_version=true --c_output=build_info.cc && \
-	  wine qmake && \
+	  wine qmake $(QMAKE_ARGS) && \
 	  nice wine mingw32-make -j 3 && \
 	  cd .. && \
 	  if [ z$(SIGN) != z ]; then \
@@ -99,7 +100,7 @@ $(BIN_DIR)/FNC-ubuntu%: $(BIN_DIR)
 	docker run --rm -it -v $(REPO_ROOT):/src \
 	  docker.cesanta.com:5000/build-ubuntu$*-qt5static:r1 bash -cx '\
 	    cd /src/$(FNC_SUBDIR) && \
-	    qmake -config static && \
+	    qmake $(QMAKE_ARGS) && \
 	    nice make -j 3 && \
 	    mv -f src/FNC $@ && \
 	    make distclean'

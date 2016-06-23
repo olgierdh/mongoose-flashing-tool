@@ -13,6 +13,10 @@ CONFIG(asan) {
   QMAKE_LFLAGS_DEBUG += -fsanitize=address
 }
 
+CONFIG(static) {
+  QMAKE_LFLAGS_RELEASE += -static -static-libgcc -static-libstdc++
+}
+
 exists(../common) {
   COMMON_PATH = ../common
   INCLUDEPATH += ..

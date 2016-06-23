@@ -1,15 +1,10 @@
 <RCC>
     <qresource prefix="/">
         <file>img/logo.png</file>
-        <file>img/smartjs.png</file>
         <file>img/loading_complete.png</file>
         <file>img/laptop1.png</file>
         <file>img/laptop2.png</file>
         <file>img/laptop3.png</file>
-        <file>img/logo_black.png</file>
-        <file>img/smartjs_black.png</file>
-        <file>img/logo_blue.png</file>
-        <file>img/smartjs_grey.png</file>
         <file>releases.json</file>
     </qresource>
 </RCC>

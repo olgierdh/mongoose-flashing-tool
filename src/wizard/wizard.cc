@@ -108,6 +108,9 @@ WizardDialog::WizardDialog(Config *config, QWidget *parent)
   connect(ui_.s5_claimBtn, &QPushButton::clicked, this,
           &WizardDialog::claimBtnClicked);
 
+  connect(ui_.logLink, &QLabel::linkActivated, this,
+          &WizardDialog::showLogViewer);
+
   QTimer::singleShot(10, this, &WizardDialog::currentStepChanged);
   QTimer::singleShot(10, this, &WizardDialog::updateReleaseInfo);
 }
@@ -791,6 +794,22 @@ void WizardDialog::claimBtnClicked() {
   qInfo() << url.toEncoded();
   QDesktopServices::openUrl(url);
   ui_.nextBtn->setEnabled(true);
+}
+
+void WizardDialog::showLogViewer() {
+  if (log_viewer_ == nullptr) {
+    log_viewer_.reset(new LogViewer(nullptr));
+    log_viewer_->show();
+    connect(log_viewer_.get(), &LogViewer::closed, this,
+            &WizardDialog::logViewerClosed);
+  } else {
+    log_viewer_->raise();
+    log_viewer_->activateWindow();
+  }
+}
+
+void WizardDialog::logViewerClosed() {
+  log_viewer_.reset();
 }
 
 void WizardDialog::showPrompt(

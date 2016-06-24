@@ -6,6 +6,8 @@
 #ifndef CS_MFT_SRC_WIZARD_WIZARD_H_
 #define CS_MFT_SRC_WIZARD_WIZARD_H_
 
+#include <memory>
+
 #include <QDebug>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -25,6 +27,7 @@
 #include "gui_prompter.h"
 #include "hal.h"
 #include "config.h"
+#include "log_viewer.h"
 #include "ui_wizard.h"
 
 class WizardDialog : public QMainWindow {
@@ -68,6 +71,9 @@ class WizardDialog : public QMainWindow {
   void clubbyStatus(int status);
 
   void claimBtnClicked();
+
+  void showLogViewer();
+  void logViewerClosed();
 
 signals:
   void showPromptResult(int clicked_button);
@@ -125,6 +131,7 @@ signals:
   QString cloudId_;
   QString cloudKey_;
 
+  std::unique_ptr<LogViewer> log_viewer_;
   QNetworkAccessManager nam_;
   GUIPrompter prompter_;
   Ui::WizardWindow ui_;

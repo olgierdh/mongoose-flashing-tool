@@ -826,7 +826,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>0</number>
+     <number>5</number>
     </property>
     <widget class="QWidget" name="step1">
      <widget class="QLabel" name="s1_label">
@@ -2877,6 +2877,20 @@
    <header>progress_widget.h</header>
   </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>platformSelector</tabstop>
+  <tabstop>portSelector</tabstop>
+  <tabstop>firmwareSelector</tabstop>
+  <tabstop>s3_wifiName</tabstop>
+  <tabstop>s3_wifiPass</tabstop>
+  <tabstop>s4_newID</tabstop>
+  <tabstop>s4_existingID</tabstop>
+  <tabstop>s4_1_cloudID</tabstop>
+  <tabstop>s4_1_psk</tabstop>
+  <tabstop>s5_claimBtn</tabstop>
+  <tabstop>nextBtn</tabstop>
+  <tabstop>prevBtn</tabstop>
+ </tabstops>
  <resources>
   <include location="wizard.qrc"/>
  </resources>

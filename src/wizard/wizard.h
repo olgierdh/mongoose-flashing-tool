@@ -11,6 +11,7 @@
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QMainWindow>
+#include <QMap>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QSerialPort>
@@ -57,6 +58,7 @@ class WizardDialog : public QMainWindow {
   void fwConnectResult(util::Status st);
   void updateSysConfig(QJsonObject config);
   void updateWiFiNetworks(QStringList networks);
+  void wifiNameChanged();
   void updateWiFiStatus(FWClient::WifiStatus ws);
 
   void registerDevice();
@@ -81,7 +83,7 @@ signals:
     CloudRegistration = 5,
     CloudCredentials = 6,
     CloudConnect = 7,
-    Finish = 8,
+    ClaimDevice = 8,
 
     Invalid = 99,
   };
@@ -107,6 +109,7 @@ signals:
   QJsonArray releases_;
   std::unique_ptr<FileDownloader> fd_;
   std::unique_ptr<FWClient> fwc_;
+  QMap<QString, int> scanResults_;
   bool gotConfig_ = false;
   bool gotNetworks_ = false;
   QJsonObject devConfig_;

@@ -97,6 +97,9 @@ WizardDialog::WizardDialog(Config *config, QWidget *parent)
   connect(ui_.platformSelector, &QComboBox::currentTextChanged, this,
           &WizardDialog::updateFirmwareSelector);
 
+  connect(ui_.s3_wifiName, &QComboBox::currentTextChanged, this,
+          &WizardDialog::wifiNameChanged);
+
   connect(&prompter_, &GUIPrompter::showPrompt, this,
           &WizardDialog::showPrompt);
   connect(this, &WizardDialog::showPromptResult, &prompter_,
@@ -215,7 +218,7 @@ void WizardDialog::nextStep() {
       } else if (ui_.s4_existingID->isChecked()) {
         ni = Step::CloudCredentials;
       } else {
-        ni = Step::Finish;
+        ni = Step::ClaimDevice;
       }
       break;
     }
@@ -226,10 +229,10 @@ void WizardDialog::nextStep() {
       break;
     }
     case Step::CloudConnect: {
-      ni = Step::Finish;
+      ni = Step::ClaimDevice;
       break;
     }
-    case Step::Finish: {
+    case Step::ClaimDevice: {
       QCoreApplication::quit();
       break;
     }
@@ -247,6 +250,7 @@ void WizardDialog::currentStepChanged() {
   const Step ci = currentStep();
   qInfo() << "Step" << ci;
   if (ci == Step::Connect) {
+    ui_.platformSelector->setFocus();
     hal_.reset();
     ui_.prevBtn->hide();
     ui_.nextBtn->setEnabled(ui_.portSelector->currentText() != "");
@@ -254,9 +258,11 @@ void WizardDialog::currentStepChanged() {
     ui_.prevBtn->show();
   }
   if (ci == Step::FirmwareSelection) {
+    ui_.firmwareSelector->setFocus();
     QTimer::singleShot(1, this, &WizardDialog::updateFirmwareSelector);
   }
   if (ci == Step::Flashing) {
+    ui_.nextBtn->setFocus();
     fwc_.reset();
     ui_.s2_1_progress->hide();
     if (selectedFirmwareURL_.toString() == "") {
@@ -270,13 +276,17 @@ void WizardDialog::currentStepChanged() {
     ui_.nextBtn->setEnabled(false);
   }
   if (ci == Step::WiFiConfig) {
+    ui_.s3_wifiName->setFocus();
     ui_.nextBtn->setEnabled(!ui_.s3_wifiName->currentText().isEmpty());
+    if (fwc_ != nullptr) fwc_->doWifiScan();
   }
   if (ci == Step::WiFiConnect) {
+    ui_.nextBtn->setFocus();
     updateWiFiStatus(wifiStatus_);
     fwc_->doWifiSetup(wifiName_, wifiPass_);
   }
   if (ci == Step::CloudRegistration) {
+    ui_.s4_newID->setFocus();
     const QString &existingId = getDevConfKey(kClubbyDeviceIdKey).toString();
     if (existingId != "") {
       qInfo() << "Existing Clubby ID:" << existingId;
@@ -288,6 +298,7 @@ void WizardDialog::currentStepChanged() {
     ui_.nextBtn->setEnabled(true);
   }
   if (ci == Step::CloudCredentials) {
+    ui_.s4_1_cloudID->setFocus();
     ui_.s4_1_cloudID->setText(getDevConfKey(kClubbyDeviceIdKey).toString());
     ui_.s4_1_psk->setText(getDevConfKey(kClubbyDevicePskKey).toString());
   }
@@ -301,7 +312,8 @@ void WizardDialog::currentStepChanged() {
       testCloudConnection(cloudId_, cloudKey_);
     }
   }
-  if (ci == Step::Finish) {
+  if (ci == Step::ClaimDevice) {
+    ui_.s5_claimBtn->setFocus();
     ui_.nextBtn->setText(tr("Finish"));
     ui_.nextBtn->setEnabled(false);
     if (fwc_ != nullptr) fwc_->doSaveConfig();
@@ -350,7 +362,7 @@ void WizardDialog::prevStep() {
       }
       break;
     }
-    case Step::Finish: {
+    case Step::ClaimDevice: {
       ni = Step::CloudRegistration;
     }
     case Step::Invalid: {
@@ -574,6 +586,7 @@ void WizardDialog::fwConnectResult(util::Status st) {
   connect(fwc_.get(), &FWClient::clubbyStatus, this,
           &WizardDialog::clubbyStatus);
   gotConfig_ = gotNetworks_ = false;
+  scanResults_.clear();
   ui_.s3_wifiName->clear();
   ui_.s3_wifiPass->clear();
   fwc_->doGetConfig();
@@ -592,22 +605,61 @@ void WizardDialog::updateSysConfig(QJsonObject config) {
 
 void WizardDialog::updateWiFiNetworks(QStringList networks) {
   qInfo() << "WiFi networks:" << networks;
-  ui_.s3_wifiName->clear();
   networks.sort();
-  const QString &currentName = getDevConfKey(kWiFiStaSsidKey).toString();
-  const QString &currentPass = getDevConfKey(kWiFiStaPassKey).toString();
-  int i = 0;
-  int currentIndex = -1;
-  for (int i = 0; i < networks.length(); i++) {
-    const QString &name = networks[i];
-    ui_.s3_wifiName->addItem(name, name);
-    if (name == currentName) currentIndex = i;
+  networks.removeDuplicates();
+  // We don't replace the list of networks because it may not be complete
+  // on each scan (ESP8266 is known to return incomplete results sometimes).
+  // Instead, we age out entries from the list.
+  for (const QString &n : networks) {
+    scanResults_[n] = 5;
   }
-  if (currentIndex >= 0) {
-    ui_.s3_wifiName->setCurrentIndex(currentIndex);
-    ui_.s3_wifiPass->setText(currentPass);
+  for (const QString &n : scanResults_.keys()) {
+    scanResults_[n]--;
+  }
+  qDebug() << scanResults_;
+  // Prune our dropdown: remove networks that were once in the scan results but
+  // have now become stale.
+  for (int i = 0; i < ui_.s3_wifiName->count();) {
+    const QString &n = ui_.s3_wifiName->itemText(i);
+    if (scanResults_[n] < 0) {
+      ui_.s3_wifiName->removeItem(i);
+      scanResults_.remove(n);
+    } else {
+      networks.removeOne(n);
+      i++;
+    }
+  }
+  // Add new networks.
+  for (const QString &n : networks) {
+    ui_.s3_wifiName->addItem(n, n);
+  }
+
+  // Select configured network and populate password, but only if user has not
+  // entered stuff manually.
+  if (scanResults_.contains(ui_.s3_wifiName->currentText())) {
+    const QString &currentName = getDevConfKey(kWiFiStaSsidKey).toString();
+    const QString &currentPass = getDevConfKey(kWiFiStaPassKey).toString();
+    int i = 0;
+    int currentIndex = -1;
+    for (int i = 0; i < ui_.s3_wifiName->count(); i++) {
+      if (ui_.s3_wifiName->itemText(i) == currentName) {
+        currentIndex = i;
+        break;
+      }
+    }
+    if (currentIndex >= 0) {
+      ui_.s3_wifiName->setCurrentIndex(currentIndex);
+      ui_.s3_wifiPass->setText(currentPass);
+    }
   }
   gotNetworks_ = true;
+  if (currentStep() == Step::Flashing || currentStep() == Step::WiFiConfig) {
+    /* Always be scanning. */
+    if (fwc_ != nullptr) fwc_->doWifiScan();
+  }
+}
+
+void WizardDialog::wifiNameChanged() {
   if (currentStep() == Step::WiFiConfig) {
     ui_.nextBtn->setEnabled(gotConfig_ &&
                             !ui_.s3_wifiName->currentText().isEmpty());

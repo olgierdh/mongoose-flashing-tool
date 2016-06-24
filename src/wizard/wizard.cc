@@ -69,10 +69,10 @@ void WizardDialog::addOptions(Config *config) {
   QList<QCommandLineOption> opts;
   opts.append(QCommandLineOption(kCloudServerAddressOption,
                                  "Cloud API server address", "host",
-                                 "api.cesanta.com"));
+                                 "api.mongoose-iot.com"));
   opts.append(QCommandLineOption(kCloudFrontendUrlOption,
                                  "URL of the cloud frontend", "URL",
-                                 "https://cloud.cesanta.com"));
+                                 "https://mongoose-iot.com"));
   config->addOptions(opts);
 }
 

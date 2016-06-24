@@ -126,6 +126,8 @@ signals:
   GUIPrompter prompter_;
   Ui::WizardWindow ui_;
 
+  const QString skipFlashingText_;
+
   friend QDebug &operator<<(QDebug &d, const Step s);
 };
 

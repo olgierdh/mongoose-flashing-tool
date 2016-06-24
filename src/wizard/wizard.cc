@@ -77,7 +77,10 @@ void WizardDialog::addOptions(Config *config) {
 }
 
 WizardDialog::WizardDialog(Config *config, QWidget *parent)
-    : QMainWindow(parent), config_(config), prompter_(this) {
+    : QMainWindow(parent),
+      config_(config),
+      prompter_(this),
+      skipFlashingText_(tr("<Skip Flashing>")) {
   ui_.setupUi(this);
   restoreGeometry(settings_.value("wizard/geometry").toByteArray());
 
@@ -166,11 +169,22 @@ void WizardDialog::nextStep() {
       break;
     }
     case Step::FirmwareSelection: {
-      settings_.setValue("wizard/selectedFw",
-                         ui_.firmwareSelector->currentText());
-      selectedFirmwareURL_ = ui_.firmwareSelector->currentText();
-      if (selectedFirmwareURL_.scheme() == "") {
-        selectedFirmwareURL_ = ui_.firmwareSelector->currentData().toString();
+      const QString &fwName = ui_.firmwareSelector->currentText();
+      settings_.setValue("wizard/selectedFw", fwName);
+      selectedFirmwareURL_.clear();
+      // Is it an item from the list?
+      bool found = false;
+      for (const auto &item : releases_) {
+        if (fwName == item.toObject()["name"].toString() ||
+            fwName == skipFlashingText_) {
+          selectedFirmwareURL_ = ui_.firmwareSelector->currentData().toString();
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        // user must've entered something manually.
+        selectedFirmwareURL_ = fwName;
       }
       qInfo() << "Selected platform:" << selectedPlatform_
               << "fw:" << selectedFirmwareURL_;
@@ -416,7 +430,7 @@ void WizardDialog::updateFirmwareSelector() {
     const QString &loc = locs[platform].toString();
     ui_.firmwareSelector->addItem(name, loc);
   }
-  ui_.firmwareSelector->addItem(tr("<Skip Flashing>"), "");
+  ui_.firmwareSelector->addItem(skipFlashingText_, "");
   const QString &selected = settings_.value("wizard/selectedFw").toString();
   for (int i = 0; i < ui_.firmwareSelector->count(); i++) {
     if (ui_.firmwareSelector->itemText(i) == selected) {

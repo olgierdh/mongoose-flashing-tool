@@ -13,10 +13,6 @@ CONFIG(asan) {
   QMAKE_LFLAGS_DEBUG += -fsanitize=address
 }
 
-CONFIG(static) {
-  QMAKE_LFLAGS_RELEASE += -static -static-libgcc -static-libstdc++
-}
-
 exists(../common) {
   COMMON_PATH = ../common
   INCLUDEPATH += ..
@@ -99,6 +95,10 @@ CONFIG(static):CONFIG(unix) {
     --append_static="'$${EXTRA_STATIC_LIBS}'" \
     --force_dynamic="'-ldl -lglib-2.0 -lgobject-2.0 -lgthread-2.0 -lm -lpthread -lrt -ludev'" \
     -- $${QMAKE_LINK}
+}
+
+CONFIG(static):CONFIG(win32) {
+  QMAKE_LFLAGS_RELEASE += -static -static-libgcc -static-libstdc++
 }
 
 DEFINES += VERSION=\\\"$$VERSION\\\"

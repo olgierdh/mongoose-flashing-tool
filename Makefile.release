@@ -55,7 +55,7 @@ $(BIN_DIR) $(OUT_DIR):
 	mkdir -p $@
 
 $(BIN_DIR)/MFT.app: $(BIN_DIR)
-	qmake $(QMAKE_ARGS)
+	qmake -config release
 	nice make -j $(shell sysctl -n hw.ncpu)
 	if [ z$(SIGN) != z ]; then \
 	  macdeployqt src/MFT.app -codesign=$(SIGN); \

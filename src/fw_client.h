@@ -63,6 +63,7 @@ signals:
   QTimer connectTimer_;
   bool connected_ = false;
   bool sending_ = false;
+  bool scanning_ = false;
   int connectAttempt_ = 0;
   QByteArray buf_;
   QStringList cmdQueue_;

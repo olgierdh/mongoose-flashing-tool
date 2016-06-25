@@ -1,5 +1,7 @@
 #include "fw_client.h"
 
+#include <cctype>
+
 #include <QDebug>
 #include <QDateTime>
 #include <QJsonArray>
@@ -47,12 +49,13 @@ FWClient::~FWClient() {
 
 void FWClient::doConnect() {
   connected_ = false;
+  scanning_ = false;
   connectAttempt_ = 0;
   doConnectAttempt();
 }
 
 void FWClient::doWifiScan() {
-  if (!connected_) return;
+  if (!connected_ || scanning_) return;
   qInfo() << "doWifiScan";
   cmdQueue_.push_back(
       R"(Wifi.scan(function (a) {)" BEGIN_MARKER_JS
@@ -165,30 +168,44 @@ void FWClient::doConnectAttempt() {
 void FWClient::portReadyRead() {
   {
     QByteArray buf = port_->readAll();
+    qDebug() << "Got" << buf.length() << "bytes, total" << buf_.length();
     qDebug() << buf;
     buf_ += buf;
   }
-  if (buf_.endsWith(kPromptEnd)) {
-    sending_ = false;
-    if (!connected_) {
-      connected_ = true;
-      buf_.clear();
-      qInfo() << "Connected to FW";
-      emit connectResult(util::Status::OK);
-    }
-  }
+  // Consume all the responses in the buffer.
+  int beginIndex, endIndex;
   while (true) {
-    const int beginIndex = buf_.indexOf(beginMarker_);
-    const int endIndex = buf_.indexOf(endMarker_);
+    beginIndex = buf_.indexOf(beginMarker_);
+    endIndex = buf_.indexOf(endMarker_);
     if (beginIndex < 0 || endIndex < beginIndex) break;
-    qDebug() << beginIndex << endIndex;
+    qDebug() << "Found message @" << beginIndex << "-" << endIndex;
     const QByteArray content =
         buf_.mid(beginIndex + beginMarker_.length(),
                  endIndex - beginIndex - beginMarker_.length());
     qDebug() << content;
     parseMessage(content);
-    buf_ = buf_.mid(endIndex + endMarker_.length());
+    buf_ = buf_.left(beginIndex) + buf_.mid(endIndex + endMarker_.length());
+    qDebug() << buf_;
+    while (buf_.length() > 0 && !buf_.endsWith(kPromptEnd) &&
+           std::isspace(buf_[buf_.length() - 1])) {
+      buf_.chop(1);
+    }
+    beginIndex = -1;
   }
+  // Sync with the device by waiting for prompt to appear.
+  // If we are receiving a message, don't mess with the buffer.
+  qDebug() << beginIndex << buf_;
+  if (beginIndex < 0 && buf_.endsWith(kPromptEnd)) {
+    buf_.clear();
+    sending_ = false;
+    if (!connected_) {
+      connected_ = true;
+      qInfo() << "Connected to FW";
+      emit connectResult(util::Status::OK);
+    }
+  }
+  qDebug() << buf_.length() << "bytes left in the buffer;" << cmdQueue_.length()
+           << "commands pending; sending?" << sending_;
   if (!cmdQueue_.isEmpty()) sendCommand();
 }
 
@@ -205,9 +222,9 @@ void FWClient::parseMessage(const QByteArray &msg) {
   QJsonParseError err;
   QJsonDocument doc = QJsonDocument::fromJson(msg, &err);
   if (err.error != QJsonParseError::NoError) {
-    const QString msg(
+    const QString emsg(
         tr("Failed to parse JSON: %1").arg(msg.toStdString().c_str()));
-    qCritical() << msg;
+    qCritical() << emsg;
     return;
   }
   if (!doc.isObject() || !doc.object()["t"].isString()) {
@@ -217,6 +234,7 @@ void FWClient::parseMessage(const QByteArray &msg) {
   const QJsonObject &o = doc.object();
   const QString type = o["t"].toString();
   if (type == WIFI_SCAN_RESULT_TYPE) {
+    scanning_ = false;
     QStringList networks;
     for (const auto &v : o["r"].toArray()) {
       networks.push_back(v.toString());

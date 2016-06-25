@@ -642,7 +642,6 @@ void WizardDialog::updateWiFiNetworks(QStringList networks) {
   if (scanResults_.contains(ui_.s3_wifiName->currentText())) {
     const QString &currentName = getDevConfKey(kWiFiStaSsidKey).toString();
     const QString &currentPass = getDevConfKey(kWiFiStaPassKey).toString();
-    int i = 0;
     int currentIndex = -1;
     for (int i = 0; i < ui_.s3_wifiName->count(); i++) {
       if (ui_.s3_wifiName->itemText(i) == currentName) {

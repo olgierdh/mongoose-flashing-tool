@@ -3,8 +3,8 @@
     {
       "name": "Latest Release",
       "locs": {
-        "ESP8266": "http://ghrelease.cesanta.com/cesanta/mongoose-iot/beta4/mongoose-iot-esp8266-*.zip",
-        "CC3200": "http://ghrelease.cesanta.com/cesanta/mongoose-iot/beta4/mongoose-iot-cc3200-*.zip"
+        "ESP8266": "http://ghrelease.cesanta.com/cesanta/mongoose-iot/latest/mongoose-iot-esp8266-*.zip",
+        "CC3200": "http://ghrelease.cesanta.com/cesanta/mongoose-iot/latest/mongoose-iot-cc3200-*.zip"
       }
     },
     {

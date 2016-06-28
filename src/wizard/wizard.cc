@@ -108,6 +108,9 @@ WizardDialog::WizardDialog(Config *config, QWidget *parent)
   connect(ui_.s5_claimBtn, &QPushButton::clicked, this,
           &WizardDialog::claimBtnClicked);
 
+  connect(ui_.aboutLink, &QLabel::linkActivated, this,
+          &WizardDialog::showAboutBox);
+
   connect(ui_.logLink, &QLabel::linkActivated, this,
           &WizardDialog::showLogViewer);
 
@@ -795,20 +798,36 @@ void WizardDialog::claimBtnClicked() {
   ui_.nextBtn->setEnabled(true);
 }
 
+void WizardDialog::showAboutBox() {
+  if (aboutBox_ == nullptr) {
+    aboutBox_.reset(new AboutDialog(nullptr));
+    aboutBox_->show();
+    connect(aboutBox_.get(), &AboutDialog::closed, this,
+            &WizardDialog::aboutBoxClosed);
+  } else {
+    aboutBox_->raise();
+    aboutBox_->activateWindow();
+  }
+}
+
+void WizardDialog::aboutBoxClosed() {
+  aboutBox_.reset();
+}
+
 void WizardDialog::showLogViewer() {
-  if (log_viewer_ == nullptr) {
-    log_viewer_.reset(new LogViewer(nullptr));
-    log_viewer_->show();
-    connect(log_viewer_.get(), &LogViewer::closed, this,
+  if (logViewer_ == nullptr) {
+    logViewer_.reset(new LogViewer(nullptr));
+    logViewer_->show();
+    connect(logViewer_.get(), &LogViewer::closed, this,
             &WizardDialog::logViewerClosed);
   } else {
-    log_viewer_->raise();
-    log_viewer_->activateWindow();
+    logViewer_->raise();
+    logViewer_->activateWindow();
   }
 }
 
 void WizardDialog::logViewerClosed() {
-  log_viewer_.reset();
+  logViewer_.reset();
 }
 
 void WizardDialog::showPrompt(

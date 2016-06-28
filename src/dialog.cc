@@ -36,7 +36,6 @@
 #include "log_viewer.h"
 #include "serial.h"
 #include "status_qt.h"
-#include "ui_about.h"
 
 #if (QT_VERSION < QT_VERSION_CHECK(5, 5, 0))
 #define qInfo qWarning
@@ -729,31 +728,36 @@ void MainDialog::flashFirmware(const QString &file) {
 #endif
 }
 
-void MainDialog::showLogViewer() {
-  if (log_viewer_ == nullptr) {
-    log_viewer_.reset(new LogViewer(nullptr));
-    log_viewer_->show();
-    connect(log_viewer_.get(), &LogViewer::closed, this,
-            &MainDialog::logViewerClosed);
+void MainDialog::showAboutBox() {
+  if (aboutBox_ == nullptr) {
+    aboutBox_.reset(new AboutDialog(nullptr));
+    aboutBox_->show();
+    connect(aboutBox_.get(), &AboutDialog::closed, this,
+            &MainDialog::aboutBoxClosed);
   } else {
-    log_viewer_->raise();
-    log_viewer_->activateWindow();
+    aboutBox_->raise();
+    aboutBox_->activateWindow();
   }
 }
 
-void MainDialog::showAboutBox() {
-  QWidget *w = new QWidget;
-  Ui_About about;
-  about.setupUi(w);
-  about.versionLabel->setText(
-      tr("Version: %1").arg(qApp->applicationVersion()));
-  about.buildLabel->setText(build_id);
-  about.buildLabel->setReadOnly(true);
-  w->show();
+void MainDialog::aboutBoxClosed() {
+  aboutBox_.reset();
+}
+
+void MainDialog::showLogViewer() {
+  if (logViewer_ == nullptr) {
+    logViewer_.reset(new LogViewer(nullptr));
+    logViewer_->show();
+    connect(logViewer_.get(), &LogViewer::closed, this,
+            &MainDialog::logViewerClosed);
+  } else {
+    logViewer_->raise();
+    logViewer_->activateWindow();
+  }
 }
 
 void MainDialog::logViewerClosed() {
-  log_viewer_.reset();
+  logViewer_.reset();
 }
 
 bool MainDialog::eventFilter(QObject *obj, QEvent *e) {
@@ -794,7 +798,7 @@ bool MainDialog::eventFilter(QObject *obj, QEvent *e) {
 void MainDialog::closeEvent(QCloseEvent *event) {
   settings_.setValue("window/geometry", saveGeometry());
   settings_.setValue("window/state", saveState());
-  if (log_viewer_ != nullptr) log_viewer_->close();
+  if (logViewer_ != nullptr) logViewer_->close();
   QMainWindow::closeEvent(event);
 }
 

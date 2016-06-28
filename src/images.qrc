@@ -1,6 +1,6 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource>
-  <file>images/mg_iot.png</file>
-  <file>images/mg_iot_30.png</file>
+  <file>images/mg_iot_256.png</file>
+  <file>images/mg_iot_32.png</file>
 </qresource>
 </RCC>

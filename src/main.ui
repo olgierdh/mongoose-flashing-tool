@@ -231,7 +231,7 @@
       <item>
        <widget class="QLabel" name="logo">
         <property name="text">
-         <string>&lt;a href=&quot;https://www.cesanta.com/products/mongoose-iot&quot;&gt;&lt;img width=30 height=30 src=&quot;:/images/mg_iot_30.png&quot;&gt;&lt;/a&gt;</string>
+         <string>&lt;a href=&quot;https://www.cesanta.com/products/mongoose-iot&quot;&gt;&lt;img width=32 height=33 src=&quot;:/images/mg_iot_32.png&quot;&gt;&lt;/a&gt;</string>
         </property>
         <property name="openExternalLinks">
          <bool>true</bool>

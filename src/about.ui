@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>467</width>
-    <height>234</height>
+    <width>594</width>
+    <height>413</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,11 +18,17 @@
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
       <widget class="QLabel" name="logoLabel">
+       <property name="minimumSize">
+        <size>
+         <width>256</width>
+         <height>256</height>
+        </size>
+       </property>
        <property name="text">
         <string/>
        </property>
        <property name="pixmap">
-        <pixmap resource="images.qrc">:/images/mg_iot.png</pixmap>
+        <pixmap resource="images.qrc">:/images/mg_iot_256.png</pixmap>
        </property>
        <property name="alignment">
         <set>Qt::AlignCenter</set>
@@ -58,16 +64,6 @@
       </widget>
      </item>
      <item>
-      <widget class="QLabel" name="nameLabel">
-       <property name="text">
-        <string>Mongoose IoT flashing tool</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item>
       <widget class="QLabel" name="versionLabel">
        <property name="text">
         <string/>
@@ -78,7 +74,7 @@
       </widget>
      </item>
      <item>
-       <widget class="QLineEdit" name="buildLabel" />
+      <widget class="QLineEdit" name="buildLabel"/>
      </item>
      <item>
       <spacer name="verticalSpacer_4">

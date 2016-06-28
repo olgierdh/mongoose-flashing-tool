@@ -24,6 +24,7 @@
 
 #include <common/util/statusor.h>
 
+#include "about_dialog.h"
 #include "file_downloader.h"
 #include "fw_bundle.h"
 #include "gui_prompter.h"
@@ -84,9 +85,11 @@ class MainDialog : public QMainWindow {
 
   void setState(State);
   void enableControlsForCurrentState();
-  void showLogViewer();
-  void showAboutBox();
 
+  void showAboutBox();
+  void aboutBoxClosed();
+
+  void showLogViewer();
   void logViewerClosed();
 
   void showPrompt(QString text,
@@ -134,7 +137,8 @@ signals:
   std::unique_ptr<QFile> console_log_;
   GUIPrompter prompter_;
   SettingsDialog settingsDlg_;
-  std::unique_ptr<LogViewer> log_viewer_;
+  std::unique_ptr<AboutDialog> aboutBox_;
+  std::unique_ptr<LogViewer> logViewer_;
 
   QNetworkConfigurationManager net_mgr_;
 

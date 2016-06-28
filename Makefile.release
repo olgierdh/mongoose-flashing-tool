@@ -26,7 +26,7 @@ REPO_ROOT = $(shell realpath .)
 MFT_SUBDIR =
 else
 REPO_ROOT = $(shell realpath ..)
-MFT_SUBDIR = fnc
+MFT_SUBDIR = mft
 endif
 
 BIN_DIR = ./bin

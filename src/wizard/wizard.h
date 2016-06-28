@@ -22,6 +22,7 @@
 #include <QTimer>
 #include <QUrl>
 
+#include "about_dialog.h"
 #include "file_downloader.h"
 #include "fw_client.h"
 #include "gui_prompter.h"
@@ -71,6 +72,9 @@ class WizardDialog : public QMainWindow {
   void clubbyStatus(int status);
 
   void claimBtnClicked();
+
+  void showAboutBox();
+  void aboutBoxClosed();
 
   void showLogViewer();
   void logViewerClosed();
@@ -131,7 +135,8 @@ signals:
   QString cloudId_;
   QString cloudKey_;
 
-  std::unique_ptr<LogViewer> log_viewer_;
+  std::unique_ptr<AboutDialog> aboutBox_;
+  std::unique_ptr<LogViewer> logViewer_;
   QNetworkAccessManager nam_;
   GUIPrompter prompter_;
   Ui::WizardWindow ui_;

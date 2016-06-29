@@ -719,23 +719,22 @@ void WizardDialog::registerDeviceRequestFinished() {
           .toInt();
   const QByteArray response = registerDeviceReply_->readAll();
   qDebug() << "registerDeviceRequestFinished" << code << response;
-  if (!registerDeviceReply_->error()) {
-    QJsonParseError err;
-    QJsonDocument doc = QJsonDocument::fromJson(response, &err);
-    if (err.error == QJsonParseError::NoError &&
-        doc.object()["device_id"].toString() != "" &&
-        doc.object()["device_psk"].toString() != "") {
-      cloudId_ = doc.object()["device_id"].toString();
-      cloudKey_ = doc.object()["device_psk"].toString();
-      testCloudConnection(cloudId_, cloudKey_);
-    } else {
-      const QString msg(tr("Invalid response: %1").arg(QString(response)));
-      qCritical() << msg;
-      QMessageBox::critical(this, tr("Error"), msg);
-    }
+  QJsonParseError err;
+  QJsonDocument doc = QJsonDocument::fromJson(response, &err);
+  if (err.error == QJsonParseError::NoError &&
+      doc.object()["device_id"].toString() != "" &&
+      doc.object()["device_psk"].toString() != "") {
+    cloudId_ = doc.object()["device_id"].toString();
+    cloudKey_ = doc.object()["device_psk"].toString();
+    testCloudConnection(cloudId_, cloudKey_);
   } else {
-    const QString msg = tr("Error registering device: %1")
-                            .arg(registerDeviceReply_->errorString());
+    QString msg;
+    if (err.error == QJsonParseError::NoError &&
+        doc.object()["error"].isString()) {
+      msg = doc.object()["error"].toString();
+    } else {
+      msg = tr("Invalid response: %1").arg(QString(response));
+    }
     qCritical() << msg;
     QMessageBox::critical(this, tr("Error"), msg);
   }

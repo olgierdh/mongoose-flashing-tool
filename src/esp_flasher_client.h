@@ -19,7 +19,8 @@ class ESPFlasherClient : public QObject {
   ESPFlasherClient(ESPROMClient *rom);
   virtual ~ESPFlasherClient();
 
-  const quint32 kFlashSectorSize = 4096;
+  static const quint32 kFlashSectorSize;
+  static const quint32 kFlashBlockSize;
 
   // Load the flasher stub.
   util::Status connect(qint32 baudRate);

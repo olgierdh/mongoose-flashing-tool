@@ -559,6 +559,7 @@ class FlasherImpl : public Flasher {
         qWarning() << "Error computing digest:" << dr.status();
         return images;
       }
+      QMap<ulong, QByteArray> newImage;
       digests = dr.ValueOrDie();
       int numBlocks =
           (data.length() + fc->kFlashSectorSize - 1) / fc->kFlashSectorSize;
@@ -575,9 +576,9 @@ class FlasherImpl : public Flasher {
         if (hash == digests.blockDigests[i]) {
           // This block is the same, skip it. Flush previous image, if any.
           if (newLen > 0) {
-            result[newAddr] = data.mid(newAddr - addr, newLen);
+            newImage[newAddr] = data.mid(newAddr - addr, newLen);
             newLen = 0;
-            qDebug() << "New image:" << result[newAddr].length() << "@" << hex
+            qDebug() << "New image:" << newImage[newAddr].length() << "@" << hex
                      << showbase << newAddr;
           }
           progress_ += len;
@@ -592,12 +593,21 @@ class FlasherImpl : public Flasher {
         }
       }
       if (newLen > 0) {
-        result[newAddr] = data.mid(newAddr - addr, newLen);
-        qDebug() << "New image:" << result[newAddr].length() << "@" << hex
+        newImage[newAddr] = data.mid(newAddr - addr, newLen);
+        qDebug() << "New image:" << newImage[newAddr].length() << "@" << hex
                  << showbase << newAddr;
       }
       qInfo() << hex << showbase << addr << "was" << dec << data.length()
-              << "now" << newImageSize;
+              << "now" << newImageSize << "diff"
+              << (data.length() - newImageSize);
+      // There's a price for fragmenting a large the image: individual sectors
+      // is slower than erasing a whole block. So unless the difference is
+      // substantial, don't bother.
+      if (data.length() - newImageSize >= ESPFlasherClient::kFlashBlockSize) {
+        result.unite(newImage);  // There are no dup keys, so unite is ok.
+      } else {
+        result[addr] = data;
+      }
     }
     qDebug() << "After deduping:" << result.size() << "images";
     return result;

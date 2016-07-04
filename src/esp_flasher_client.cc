@@ -39,6 +39,9 @@ ESPFlasherClient::~ESPFlasherClient() {
   disconnect();
 }
 
+const quint32 ESPFlasherClient::kFlashSectorSize = 4096;
+const quint32 ESPFlasherClient::kFlashBlockSize = 65536;
+
 util::Status ESPFlasherClient::connect(qint32 baudRate) {
   const QString prefix = tr("ESPFlasherClient::connect(%1): ").arg(baudRate);
   qDebug() << prefix;

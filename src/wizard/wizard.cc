@@ -209,13 +209,14 @@ void WizardDialog::nextStep() {
       wifiName_ = ui_.s3_wifiName->currentText();
       wifiPass_ = ui_.s3_wifiPass->toPlainText();
       qInfo() << "Selected network:" << wifiName_;
-      fwc_->setConfValue(kWiFiStaEnableKey, true);
-      fwc_->setConfValue(kWiFiStaSsidKey, wifiName_);
-      fwc_->setConfValue(kWiFiStaPassKey, wifiPass_);
       break;
     }
     case Step::WiFiConnect: {
       ni = Step::CloudRegistration;
+      fwc_->setConfValue(kWiFiStaEnableKey, true);
+      fwc_->setConfValue(kWiFiStaSsidKey, wifiName_);
+      fwc_->setConfValue(kWiFiStaPassKey, wifiPass_);
+      fwc_->doGetConfig();
       break;
     }
     case Step::CloudRegistration: {
@@ -236,6 +237,12 @@ void WizardDialog::nextStep() {
     }
     case Step::CloudConnect: {
       ni = Step::ClaimDevice;
+      fwc_->setConfValue(kClubbyConnectOnBootKey, true);
+      fwc_->setConfValue(kClubbyServerAddressKey,
+                         config_->value(kCloudServerAddressOption));
+      fwc_->setConfValue(kClubbyDeviceIdKey, cloudId_);
+      fwc_->setConfValue(kClubbyDevicePskKey, cloudKey_);
+      fwc_->doGetConfig();
       break;
     }
     case Step::ClaimDevice: {
@@ -763,11 +770,6 @@ void WizardDialog::clubbyStatus(int status) {
     ui_.nextBtn->setEnabled(true);
     ui_.s4_2_circle->show();
     ui_.s4_2_connected->show();
-    fwc_->setConfValue(kClubbyConnectOnBootKey, true);
-    fwc_->setConfValue(kClubbyServerAddressKey,
-                       config_->value(kCloudServerAddressOption));
-    fwc_->setConfValue(kClubbyDeviceIdKey, cloudId_);
-    fwc_->setConfValue(kClubbyDevicePskKey, cloudKey_);
   } else {
     const QString msg(tr("Cloud connection failed"));
     qCritical() << msg;

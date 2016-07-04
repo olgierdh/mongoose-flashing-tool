@@ -68,8 +68,14 @@ void FWClient::doGetConfig() {
   if (!connected_) return;
   qInfo() << "doGetConfig";
   cmdQueue_.push_back(BEGIN_MARKER_JS
-                      R"(print(JSON.stringify({t:')" SYS_CONFIG_TYPE
-                      R"(', sys:Sys}));)" END_MARKER_JS);
+                      "print(JSON.stringify({t:'" SYS_CONFIG_TYPE
+                      "', "
+                      "sys:{conf:{wifi:{sta:{ssid:Sys.conf.wifi.sta.ssid,"
+                      "pass:Sys.conf.wifi.sta.pass}},"
+                      "clubby:{server_address:Sys.conf.clubby.server_address,"
+                      "device_id:Sys.conf.clubby.device_id,"
+                      "device_psk:Sys.conf.clubby.device_psk}},"
+                      "ro_vars:Sys.ro_vars}}));)" END_MARKER_JS);
   sendCommand();
 }
 

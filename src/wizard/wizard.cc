@@ -125,7 +125,8 @@ WizardDialog::Step WizardDialog::currentStep() const {
 util::Status WizardDialog::doConnect() {
   hal_.reset();
   port_.reset();
-  auto sp = connectSerial(QSerialPortInfo(selectedPort_), 115200);
+  auto sp = connectSerial(QSerialPortInfo(selectedPort_),
+                          config_->value("console-baud-rate").toInt());
   if (!sp.ok()) {
     return QS(util::error::UNAVAILABLE,
               tr("Error opening %1: %2")
@@ -161,6 +162,7 @@ void WizardDialog::nextStep() {
   switch (ci) {
     case Step::Connect: {
       selectedPlatform_ = ui_.platformSelector->currentText();
+      settings_.setValue("wizard/selectedPlatform", selectedPlatform_);
       selectedPort_ = ui_.portSelector->currentText();
       QString msg;
       do {
@@ -263,6 +265,9 @@ void WizardDialog::currentStepChanged() {
   const Step ci = currentStep();
   qInfo() << "Step" << ci;
   if (ci == Step::Connect) {
+    const int i = ui_.platformSelector->findText(
+        settings_.value("wizard/selectedPlatform").toString());
+    if (i >= 0) ui_.platformSelector->setCurrentIndex(i);
     ui_.platformSelector->setFocus();
     hal_.reset();
     ui_.prevBtn->hide();
@@ -572,6 +577,7 @@ void WizardDialog::flashingDone(QString msg, bool success) {
   ui_.s2_1_progress->hide();
   if (success) {
     ui_.s2_1_title->setText(tr("FIRMWARE IS BOOTING ..."));
+    setSpeed(port_.get(), config_->value("console-baud-rate").toInt());
     fwc_.reset(new FWClient(port_.get()));
     connect(fwc_.get(), &FWClient::connectResult, this,
             &WizardDialog::fwConnectResult);

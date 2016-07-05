@@ -137,7 +137,7 @@ util::StatusOr<QByteArray> readBytes(QSerialPort *s, int n,
 
 util::Status writeBytes(QSerialPort *s, const QByteArray &bytes,
                         int timeout = kDefaultTimeoutMs) {
-  qDebug() << "Writing bytes:" << bytes.toHex();
+  // qDebug() << "Writing bytes:" << bytes.toHex();
   if (!s->write(bytes)) {
     return util::Status(
         util::error::UNKNOWN,
@@ -945,6 +945,8 @@ class CC3200HAL : public HAL {
   }
 
   util::Status probe() const override {
+    util::Status st = setSpeed(port_, kSerialSpeed);
+    if (!st.ok()) return st;
 #ifndef NO_LIBFTDI
     auto ftdi = openFTDI();
     if (!ftdi.ok()) {
@@ -952,10 +954,8 @@ class CC3200HAL : public HAL {
     }
     std::unique_ptr<ftdi_context, void (*) (ftdi_context *) > ctx(
         ftdi.ValueOrDie(), ftdi_free);
-    util::Status st = resetSomething(ctx.get());
-    if (!st.ok()) {
-      return st;
-    }
+    st = resetSomething(ctx.get());
+    if (!st.ok()) return st;
 #endif
     return doBreak(port_);
   }
@@ -1000,7 +1000,7 @@ void addOptions(Config *config) {
   opts.append(QCommandLineOption(kFormatFailFS,
                                  "Format SFLASH file system before flashing. "
                                  "Accepted sizes: 512K, 1M, 2M, 4M, 8M, 16M.",
-                                 "size"));
+                                 "size", "1M"));
   config->addOptions(opts);
 }
 

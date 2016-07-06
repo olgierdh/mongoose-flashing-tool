@@ -75,7 +75,7 @@ void FWClient::doGetConfig() {
                       "clubby:{server_address:Sys.conf.clubby.server_address,"
                       "device_id:Sys.conf.clubby.device_id,"
                       "device_psk:Sys.conf.clubby.device_psk}},"
-                      "ro_vars:Sys.ro_vars}}));)" END_MARKER_JS);
+                      "ro_vars:Sys.ro_vars}}));" END_MARKER_JS);
   sendCommand();
 }
 
@@ -168,6 +168,7 @@ void FWClient::doConnectAttempt() {
   buf_.clear();
   port_->readAll();  // Discard everything in the buffer up till now.
   port_->write("\n");
+  syncing_ = true;
   QTimer::singleShot(1000, this, &FWClient::doConnectAttempt);
 }
 
@@ -201,27 +202,51 @@ void FWClient::portReadyRead() {
   // Sync with the device by waiting for prompt to appear.
   // If we are receiving a message, don't mess with the buffer.
   qDebug() << beginIndex << buf_;
-  if (beginIndex < 0 && buf_.endsWith(kPromptEnd)) {
+  if (syncing_ && beginIndex < 0 && buf_.endsWith(kPromptEnd)) {
     buf_.clear();
-    sending_ = false;
+    syncing_ = false;
+    qInfo() << "Synced";
     if (!connected_) {
       connected_ = true;
-      qInfo() << "Connected to FW";
       emit connectResult(util::Status::OK);
     }
   }
   qDebug() << buf_.length() << "bytes left in the buffer;" << cmdQueue_.length()
-           << "commands pending; sending?" << sending_;
-  if (!cmdQueue_.isEmpty()) sendCommand();
+           << "commands pending; sending?" << sending_ << "syncing?"
+           << syncing_;
+  if (!sending_ && !cmdQueue_.isEmpty()) {
+    QTimer::singleShot(100, this, &FWClient::sendCommand);
+  }
+}
+
+void FWClient::sendMore() {
+  if (!connected_) {
+    curCmd_.clear();
+    return;
+  }
+  // Perform poor-man's flow control, try to not overflow serial adapter's FIFO.
+  // At 115200 transmitting 16 chars takes ~15 uS, so 20 ms should be plenty.
+  QByteArray toSend = curCmd_.left(16);
+  qDebug() << "Sending" << toSend;
+  port_->write(toSend);
+  curCmd_ = curCmd_.mid(toSend.length());
+  if (!curCmd_.isEmpty()) {
+    QTimer::singleShot(20, this, &FWClient::sendMore);
+  } else {
+    sending_ = false;
+    syncing_ = true;
+  }
 }
 
 void FWClient::sendCommand() {
-  if (sending_) return;
+  if (cmdQueue_.isEmpty() || sending_) return;
   const QByteArray cmd = (cmdQueue_.front() + "\n").toUtf8();
   cmdQueue_.pop_front();
   qDebug() << "Cmd:" << cmd;
-  port_->write(cmd);
+  curCmd_ = cmd;
   sending_ = true;
+  syncing_ = false;
+  sendMore();
 }
 
 void FWClient::parseMessage(const QByteArray &msg) {

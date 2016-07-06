@@ -61,6 +61,7 @@ class WizardDialog : public QMainWindow {
 
   void fwConnectResult(util::Status st);
   void updateSysConfig(QJsonObject config);
+  void doWifiScan();
   void updateWiFiNetworks(QStringList networks);
   void wifiNameChanged();
   void updateWiFiStatus(FWClient::WifiStatus ws);

@@ -829,7 +829,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>5</number>
+     <number>4</number>
     </property>
     <widget class="QWidget" name="step1">
      <widget class="QLabel" name="s1_label">
@@ -1050,7 +1050,7 @@
        </font>
       </property>
       <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;https://github.com/cesanta/mongoose-iot/blob/master/fw/platforms/esp8266/flashing.md#wiring&quot;&gt;&lt;span style=&quot; font-size:10pt; text-decoration: underline; color:#ffffff;&quot;&gt;Having a problem connecting?&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;https://github.com/cesanta/mongoose-iot/blob/master/fw/platforms/esp8266/flashing.md#wiring&quot;&gt;&lt;span style=&quot; font-size:10pt; text-decoration: underline; color:#ffffff;&quot;&gt;Having a problem connecting?&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
       </property>
       <property name="alignment">
        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
@@ -1720,7 +1720,7 @@
      </widget>
     </widget>
     <widget class="QWidget" name="step3_1">
-     <widget class="QLabel" name="s3_label_5">
+     <widget class="QLabel" name="s3_1_label_5">
       <property name="geometry">
        <rect>
         <x>100</x>
@@ -1745,7 +1745,7 @@
        <set>Qt::AlignCenter</set>
       </property>
      </widget>
-     <widget class="QLabel" name="s3_label_6">
+     <widget class="QLabel" name="s3_1_label_6">
       <property name="geometry">
        <rect>
         <x>0</x>
@@ -1806,146 +1806,20 @@
        <set>Qt::AlignCenter</set>
       </property>
      </widget>
-     <widget class="QLabel" name="s3_1_circle">
-      <property name="geometry">
-       <rect>
-        <x>420</x>
-        <y>80</y>
-        <width>310</width>
-        <height>250</height>
-       </rect>
-      </property>
-      <property name="maximumSize">
-       <size>
-        <width>491</width>
-        <height>331</height>
-       </size>
-      </property>
-      <property name="text">
-       <string/>
-      </property>
-      <property name="pixmap">
-       <pixmap resource="wizard.qrc">:/img/loading_complete.png</pixmap>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignCenter</set>
-      </property>
-     </widget>
-     <widget class="QLabel" name="s3_1_connected">
+     <widget class="ProgressWidget" name="s3_1_progress">
       <property name="geometry">
        <rect>
         <x>510</x>
-        <y>165</y>
-        <width>130</width>
-        <height>80</height>
+        <y>130</y>
+        <width>180</width>
+        <height>180</height>
        </rect>
       </property>
-      <property name="palette">
-       <palette>
-        <active>
-         <colorrole role="WindowText">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>112</red>
-            <green>255</green>
-            <blue>150</blue>
-           </color>
-          </brush>
-         </colorrole>
-         <colorrole role="Text">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>112</red>
-            <green>255</green>
-            <blue>150</blue>
-           </color>
-          </brush>
-         </colorrole>
-         <colorrole role="ButtonText">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>112</red>
-            <green>255</green>
-            <blue>150</blue>
-           </color>
-          </brush>
-         </colorrole>
-        </active>
-        <inactive>
-         <colorrole role="WindowText">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>112</red>
-            <green>255</green>
-            <blue>150</blue>
-           </color>
-          </brush>
-         </colorrole>
-         <colorrole role="Text">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>112</red>
-            <green>255</green>
-            <blue>150</blue>
-           </color>
-          </brush>
-         </colorrole>
-         <colorrole role="ButtonText">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>112</red>
-            <green>255</green>
-            <blue>150</blue>
-           </color>
-          </brush>
-         </colorrole>
-        </inactive>
-        <disabled>
-         <colorrole role="WindowText">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>112</red>
-            <green>255</green>
-            <blue>150</blue>
-           </color>
-          </brush>
-         </colorrole>
-         <colorrole role="Text">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>112</red>
-            <green>255</green>
-            <blue>150</blue>
-           </color>
-          </brush>
-         </colorrole>
-         <colorrole role="ButtonText">
-          <brush brushstyle="SolidPattern">
-           <color alpha="255">
-            <red>112</red>
-            <green>255</green>
-            <blue>150</blue>
-           </color>
-          </brush>
-         </colorrole>
-        </disabled>
-       </palette>
+      <property name="toolTip">
+       <string>Fancy progress widget</string>
       </property>
-      <property name="font">
-       <font>
-        <family>Roboto Light</family>
-        <pointsize>14</pointsize>
-        <underline>false</underline>
-       </font>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">color:#70ff96</string>
-      </property>
-      <property name="text">
-       <string>CONNECTED</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignCenter</set>
+      <property name="whatsThis">
+       <string>Circular progress widget.</string>
       </property>
      </widget>
     </widget>

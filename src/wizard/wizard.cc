@@ -296,7 +296,7 @@ void WizardDialog::currentStepChanged() {
   if (ci == Step::WiFiConfig) {
     ui_.s3_wifiName->setFocus();
     ui_.nextBtn->setEnabled(!ui_.s3_wifiName->currentText().isEmpty());
-    if (fwc_ != nullptr) fwc_->doWifiScan();
+    doWifiScan();
   }
   if (ci == Step::WiFiConnect) {
     ui_.nextBtn->setFocus();
@@ -609,7 +609,7 @@ void WizardDialog::fwConnectResult(util::Status st) {
   ui_.s3_wifiName->clear();
   ui_.s3_wifiPass->clear();
   fwc_->doGetConfig();
-  fwc_->doWifiScan();
+  doWifiScan();
 }
 
 void WizardDialog::updateSysConfig(QJsonObject config) {
@@ -671,9 +671,14 @@ void WizardDialog::updateWiFiNetworks(QStringList networks) {
     }
   }
   gotNetworks_ = true;
-  if (currentStep() == Step::Flashing || currentStep() == Step::WiFiConfig) {
-    /* Always be scanning. */
-    if (fwc_ != nullptr) fwc_->doWifiScan();
+  /* Always be scanning. */
+  QTimer::singleShot(1000, this, &WizardDialog::doWifiScan);
+}
+
+void WizardDialog::doWifiScan() {
+  if (fwc_ != nullptr &&
+      (currentStep() == Step::Flashing || currentStep() == Step::WiFiConfig)) {
+    fwc_->doWifiScan();
   }
 }
 
@@ -690,10 +695,20 @@ void WizardDialog::updateWiFiStatus(FWClient::WifiStatus ws) {
     wifiStatus_ = ws;
   }
   if (currentStep() == Step::WiFiConnect) {
-    const bool isConnected = (ws == FWClient::WifiStatus::IP_Acquired);
-    ui_.s3_1_circle->setVisible(isConnected);
-    ui_.s3_1_connected->setVisible(isConnected);
-    ui_.nextBtn->setEnabled(isConnected);
+    int progress = 0;
+    switch (ws) {
+      case FWClient::WifiStatus::Disconnected:
+        progress = 0;
+        break;
+      case FWClient::WifiStatus::Connected:
+        progress = 1;
+        break;
+      case FWClient::WifiStatus::IP_Acquired:
+        progress = 2;
+        break;
+    }
+    ui_.s3_1_progress->setProgress(progress, 2);
+    ui_.nextBtn->setEnabled(ws == FWClient::WifiStatus::IP_Acquired);
   }
 }
 

@@ -48,6 +48,7 @@ signals:
 
  private slots:
   void portReadyRead();
+  void sendMore();
 
  private:
   void doConnectAttempt();
@@ -63,10 +64,12 @@ signals:
   QTimer connectTimer_;
   bool connected_ = false;
   bool sending_ = false;
+  bool syncing_ = false;
   bool scanning_ = false;
   int connectAttempt_ = 0;
   QByteArray buf_;
   QStringList cmdQueue_;
+  QByteArray curCmd_;
 };
 
 #endif /* CS_MFT_SRC_FW_CLIENT_H_ */

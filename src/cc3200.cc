@@ -50,6 +50,7 @@ const int kStorageID = 0;
 const char kFWFilename[] = "/sys/mcuimg.bin";
 const char kFWBundleFWPartNameOld[] = "sys_mcuimg.bin";  // Backward compat.
 const char kFWBundleFSPartName[] = "fs.img";
+const char kFSDirPartType[] = "fs_dir";
 const char kFS0Filename[] = "0.fs";
 const char kFS1Filename[] = "1.fs";
 const int kBlockSizes[] = {0x100, 0x400, 0x1000, 0x4000, 0x10000};
@@ -308,6 +309,8 @@ class FlasherImpl : public Flasher {
       QString fileName = p.name;
       if (fileName == kFWBundleFSPartName) continue;
       if (fileName == kFWBundleFWPartNameOld) fileName = kFWFilename;
+      // TODO(rojer): Handle fs_dir.
+      if (p.attrs["type"] == kFSDirPartType) continue;
       const auto data = fw->getPartSource(p.name);
       if (!data.ok()) return data.status();
       qDebug() << "File:" << fileName << data.ValueOrDie().length() << "bytes";

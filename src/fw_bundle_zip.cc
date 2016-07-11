@@ -16,6 +16,7 @@
 
 namespace {
 const char kManifestFileName[] = "manifest.json";
+const char kFSDirPartType[] = "fs_dir";
 }  // namespace
 
 class ZipFWBundle : public FirmwareBundle {
@@ -105,6 +106,7 @@ util::Status ZipFWBundle::readManifest() {
                   QObject::tr("part %1 is not an object").arg(partName));
       }
       const QJsonObject &jsonPart = v.toObject();
+      if (jsonPart["type"].toString() == kFSDirPartType) continue;
       Part p;
       p.name = partName;
       for (const QString &attr : jsonPart.keys()) {

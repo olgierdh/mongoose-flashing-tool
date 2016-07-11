@@ -17,10 +17,8 @@
 
 class FirmwareBundle {
  public:
-  FirmwareBundle() {
-  }
-  virtual ~FirmwareBundle() {
-  }
+  FirmwareBundle();
+  virtual ~FirmwareBundle();
 
   virtual QString name() const;
   virtual QString version() const;

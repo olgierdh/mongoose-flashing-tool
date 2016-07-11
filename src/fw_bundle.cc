@@ -11,6 +11,12 @@
 #define qInfo qWarning
 #endif
 
+FirmwareBundle::FirmwareBundle() {
+}
+
+FirmwareBundle::~FirmwareBundle() {
+}
+
 QString FirmwareBundle::name() const {
   return getAttr("name");
 }

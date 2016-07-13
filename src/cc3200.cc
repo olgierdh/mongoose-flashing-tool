@@ -448,13 +448,20 @@ class FlasherImpl : public Flasher {
     }
     std::unique_ptr<ftdi_context, void (*) (ftdi_context *) > ctx(
         r.ValueOrDie(), ftdi_free);
-    emit statusMessage(tr("Resetting the device..."), true);
-    st = resetSomething(ctx.get());
-    if (!st.ok()) {
-      return st;
-    }
 #endif
-    st = doBreak(port_);
+    int i = 1;
+    do {
+#ifndef NO_LIBFTDI
+      emit statusMessage(tr("Resetting the device..."), true);
+      st = resetSomething(ctx.get());
+#else
+      st = util::Status::OK;
+#endif
+      if (st.ok()) {
+        emit statusMessage(tr("Sending break..."), true);
+        st = doBreak(port_);
+      }
+    } while (!st.ok() && i++ < 3);
     if (!st.ok()) {
       return st;
     }
@@ -990,10 +997,19 @@ class CC3200HAL : public HAL {
     }
     std::unique_ptr<ftdi_context, void (*) (ftdi_context *) > ctx(
         ftdi.ValueOrDie(), ftdi_free);
-    st = resetSomething(ctx.get());
-    if (!st.ok()) return st;
 #endif
-    return doBreak(port_);
+    int i = 1;
+    do {
+#ifndef NO_LIBFTDI
+      st = resetSomething(ctx.get());
+#else
+      st = util::Status::OK;
+#endif
+      if (st.ok()) {
+        st = doBreak(port_);
+      }
+    } while (!st.ok() && i++ < 3);
+    return st;
   }
 
   std::unique_ptr<Flasher> flasher(Prompter *prompter) const override {

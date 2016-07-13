@@ -299,8 +299,9 @@ void WizardDialog::currentStepChanged() {
     doWifiScan();
   }
   if (ci == Step::WiFiConnect) {
+    ui_.s3_1_title->setText(tr("CONNECTING TO WI-FI ..."));
     ui_.nextBtn->setFocus();
-    updateWiFiStatus(wifiStatus_);
+    updateWiFiStatus(FWClient::WifiStatus::Disconnected);
     fwc_->doWifiSetup(wifiName_, wifiPass_);
   }
   if (ci == Step::CloudRegistration) {
@@ -704,6 +705,7 @@ void WizardDialog::updateWiFiStatus(FWClient::WifiStatus ws) {
         progress = 1;
         break;
       case FWClient::WifiStatus::IP_Acquired:
+        ui_.s3_1_title->setText(tr("CONNECTED"));
         progress = 2;
         break;
     }

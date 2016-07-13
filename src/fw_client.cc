@@ -239,7 +239,7 @@ void FWClient::sendMore() {
 }
 
 void FWClient::sendCommand() {
-  if (cmdQueue_.isEmpty() || sending_) return;
+  if (cmdQueue_.isEmpty() || sending_ || syncing_) return;
   const QByteArray cmd = (cmdQueue_.front() + "\n").toUtf8();
   cmdQueue_.pop_front();
   qDebug() << "Cmd:" << cmd;

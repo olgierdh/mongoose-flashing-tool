@@ -56,6 +56,10 @@ const int kBlockSizes[] = {0x100, 0x400, 0x1000, 0x4000, 0x10000};
 const int kFileUploadBlockSize = 4096;
 const int kSPIFFSMetadataSize = 64;
 
+const int kFileOpenModeCreateIfNotExist = 0x3000;
+const int kFileOpenModeSecure = 0x20000;
+const int kFileSignatureLength = 256;
+
 const char kOpcodeStartUpload = 0x21;
 const char kOpcodeFinishUpload = 0x22;
 
@@ -303,19 +307,45 @@ class FlasherImpl : public Flasher {
     if (fs.ok()) {
       spiffs_image_ = fs.ValueOrDie();
     }
-    int codeSize = 0;
     for (const auto &p : fw->parts()) {
       QString fileName = p.name;
       if (fileName == kFWBundleFSPartName) continue;
       if (fileName == kFWBundleFWPartNameOld) fileName = kFWFilename;
+      const QString &type = p.attrs["type"].toString();
+      if (p.attrs["type"].isValid()) {
+        if (type != "slfile" && type != "boot" && type != "boot_cfg" &&
+            type != "app" && type != "fs") {
+          continue;
+        }
+      }
       const auto data = fw->getPartSource(p.name);
       if (!data.ok()) return data.status();
-      qDebug() << "File:" << fileName << data.ValueOrDie().length() << "bytes";
       files_[fileName] = data.ValueOrDie();
-      if (fileName == kFWFilename) codeSize = data.ValueOrDie().length();
+      const QString signPart = p.attrs["sign"].toString();
+      if (signPart != "") {
+        const auto sdr = fw->getPartSource(signPart);
+        if (!sdr.ok()) {
+          return QSP(tr("Unable to get signature data for part %1 (part %2)")
+                         .arg(p.name)
+                         .arg(signPart),
+                     sdr.status());
+        }
+        const QByteArray signData = sdr.ValueOrDie();
+        if (signData.length() != kFileSignatureLength) {
+          return QS(
+              util::error::INVALID_ARGUMENT,
+              tr("Wrong signature length for part %1: expected %2, got %3")
+                  .arg(p.name)
+                  .arg(kFileSignatureLength)
+                  .arg(signData.length()));
+        }
+        fileSignatures_[fileName] = signData;
+      }
+      qDebug() << "File:" << fileName << data.ValueOrDie().length()
+               << "bytes, type" << type
+               << (signPart.isEmpty() ? "" : "(signed)");
     }
-    qInfo() << fw->buildId() << "code" << codeSize << "fs"
-            << spiffs_image_.length();
+    qInfo() << fw->buildId();
     return util::Status::OK;
   }
 
@@ -670,7 +700,8 @@ class FlasherImpl : public Flasher {
     QByteArray payload;
     QDataStream ps(&payload, QIODevice::WriteOnly);
     ps.setByteOrder(QDataStream::BigEndian);
-    quint32 flags = 0x3000;
+    quint32 flags = kFileOpenModeCreateIfNotExist;
+    if (!fileSignatures_[filename].isEmpty()) flags |= kFileOpenModeSecure;
     const int num_sizes = sizeof(kBlockSizes) / sizeof(kBlockSizes[0]);
     int block_size_index = 0;
     for (; block_size_index < num_sizes; block_size_index++) {
@@ -721,10 +752,14 @@ class FlasherImpl : public Flasher {
     return util::Status::OK;
   }
 
-  util::Status closeFile() {
+  util::Status closeFile(const QByteArray &signature) {
     QByteArray payload(&kOpcodeFinishUpload, 1);
     payload.append(QByteArray("\0", 1).repeated(63));
-    payload.append(QByteArray("\x46", 1).repeated(256));
+    if (!signature.isEmpty()) {
+      payload.append(signature);
+    } else {
+      payload.append(QByteArray("\x46", 1).repeated(256));
+    }
     payload.append("\0", 1);
     return sendPacket(port_, payload);
   }
@@ -763,7 +798,7 @@ class FlasherImpl : public Flasher {
       emit progress(progress_);
     }
     emit statusMessage(tr("Upload finished."), true);
-    return closeFile();
+    return closeFile(fileSignatures_[filename]);
   }
 
   util::StatusOr<FileInfo> getFileInfo(const QString &filename) {
@@ -828,7 +863,7 @@ class FlasherImpl : public Flasher {
       r.append(resp.ValueOrDie());
     }
 
-    st = closeFile();
+    st = closeFile("");
     if (!st.ok()) {
       return st;
     }
@@ -932,6 +967,7 @@ class FlasherImpl : public Flasher {
   mutable QMutex lock_;
   QByteArray spiffs_image_;
   QMap<QString, QByteArray> files_;
+  QMap<QString, QByteArray> fileSignatures_;
   QMap<QString, QByteArray> extra_spiffs_files_;
   QSerialPort *port_;
   bool merge_spiffs_ = false;

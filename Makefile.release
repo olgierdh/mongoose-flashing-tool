@@ -73,6 +73,8 @@ $(BIN_DIR)/MFT.exe: $(BIN_DIR)
 	    --tag_as_version=true --c_output=build_info.cc && \
 	  wine qmake $(QMAKE_ARGS) && \
 	  nice wine mingw32-make -j 3 && \
+	  mv -f release/MFT.exe ../$@; \
+	  wine mingw32-make distclean 2>/dev/null; \
 	  cd .. && \
 	  if [ z$(SIGN) != z ]; then \
 	    osslsigncode sign \
@@ -80,9 +82,8 @@ $(BIN_DIR)/MFT.exe: $(BIN_DIR)
 	      -n "Mongoose Flashing Tool" \
 	      -i https://www.cesanta.com/ \
 	      -ts http://tsa.startssl.com/rfc3161 \
-	      -in src/release/MFT.exe -out $@; \
-	  else \
-	    mv -f src/release/MFT.exe $@; \
+	      -in $@ -out $@.signed && \
+	    mv $@.signed $@; \
 	  fi; \
 	  rm -rf src/release src/Makefile src/build_info.cc'
 

@@ -56,6 +56,7 @@ class WizardDialog : public QMainWindow {
                   QList<QPair<QString, Prompter::ButtonRole>> buttons);
 
   void flashFirmware(const QString &fileName);
+  void flasherStatusMessage(QString msg, bool important);
   void flashingProgress(int bytesWritten);
   void flashingDone(QString msg, bool success);
 
@@ -121,7 +122,6 @@ signals:
   std::unique_ptr<FileDownloader> fd_;
   std::unique_ptr<FWClient> fwc_;
   QMap<QString, int> scanResults_;
-  bool gotConfig_ = false;
   bool gotNetworks_ = false;
   QJsonObject devConfig_;
   FWClient::WifiStatus wifiStatus_ = FWClient::WifiStatus::Disconnected;

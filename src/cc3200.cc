@@ -256,7 +256,7 @@ util::StatusOr<ftdi_context *> openFTDI() {
   return ctx.release();
 }
 
-util::Status resetSomething(ftdi_context *ctx) {
+util::Status doReset(ftdi_context *ctx) {
   unsigned char c = 1;
   if (ftdi_write_data(ctx, &c, 1) < 0) {
     return util::Status(util::error::UNKNOWN, "ftdi_write_data failed");
@@ -283,10 +283,50 @@ util::Status boot(ftdi_context *ctx) {
 }
 #endif
 
+#ifndef NO_LIBFTDI
+util::Status connectToBootLoader(QSerialPort *port, ftdi_context *ctx) {
+#else
+util::Status connectToBootLoader(QSerialPort *port) {
+#endif
+  util::Status st = setSpeed(port, kSerialSpeed);
+  if (!st.ok()) return st;
+  int i = 1;
+  do {
+#ifndef NO_LIBFTDI
+    if (ctx != nullptr) doReset(ctx);
+#endif
+    st = doBreak(port);
+  } while (!st.ok() && i++ < 3);
+  if (!st.ok()) {
+    st = QS(util::error::UNAVAILABLE,
+            QObject::tr(
+                "Unable to communicate with the boot loader. "
+                "Please make sure SOP2 is high and reset the device. "
+                "If you are using a LAUNCHXL board, the SOP2 jumper should "
+                "be closed"
+#ifndef NO_LIBFTDI
+                " or a jumper wire installed as described "
+                "<a href=\"http://energia.nu/cc3200guide/\">here</a>."
+#else
+                "."
+#endif
+                ));
+  }
+  return st;
+}
 class FlasherImpl : public Flasher {
   Q_OBJECT
  public:
-  FlasherImpl(QSerialPort *port) : port_(port){};
+#ifndef NO_LIBFTDI
+  FlasherImpl(QSerialPort *port, ftdi_context *ftdiCtx, Prompter *prompter)
+      : port_(port), ftdiCtx_(ftdiCtx), prompter_(prompter) {
+  }
+#else
+  FlasherImpl(QSerialPort *port, Prompter *prompter)
+      : port_(port), prompter_(prompter) {
+  }
+#endif
+
   util::Status setFirmware(FirmwareBundle *fw) override {
     auto code = fw->getPartSource(kFWFilename);
     if (!code.ok()) {
@@ -432,54 +472,51 @@ class FlasherImpl : public Flasher {
 
  private:
   util::Status runLocked() {
-    util::Status st;
+    util::Status st = util::Status::UNKNOWN;
     progress_ = 0;
     emit progress(progress_);
 
-    st = setSpeed(port_, kSerialSpeed);
-    if (!st.ok()) {
-      return st;
-    }
-#ifndef NO_LIBFTDI
-    emit statusMessage(tr("Opening FTDI context..."), true);
-    auto r = openFTDI();
-    if (!r.ok()) {
-      return r.status();
-    }
-    std::unique_ptr<ftdi_context, void (*) (ftdi_context *) > ctx(
-        r.ValueOrDie(), ftdi_free);
-#endif
-    int i = 1;
-    do {
-#ifndef NO_LIBFTDI
-      emit statusMessage(tr("Resetting the device..."), true);
-      st = resetSomething(ctx.get());
-#else
+    // Optimization - device may already be in the boot loader mode,
+    // such as if a successful probe() was performed previously.
+    // Since there is no guarantee that we can reset the device at will,
+    // we'll take a hint that the port is at the correct speed already
+    // and try to communicate with the loader directly.
+    if (port_->baudRate() == kSerialSpeed) {
       st = util::Status::OK;
+    }
+
+    do {
+      while (!st.ok()) {
+#ifndef NO_LIBFTDI
+        st = connectToBootLoader(port_, ftdiCtx_);
+#else
+        st = connectToBootLoader(port_);
 #endif
-      if (st.ok()) {
-        emit statusMessage(tr("Sending break..."), true);
-        st = doBreak(port_);
+        if (!st.ok()) {
+          qCritical() << st;
+          QString msg = QString::fromUtf8(st.ToString().c_str());
+          int answer = prompter_->Prompt(
+              msg, {{tr("Retry"), Prompter::ButtonRole::No},
+                    {tr("Cancel"), Prompter::ButtonRole::Yes}});
+          if (answer == 1) return st;
+        }
       }
-    } while (!st.ok() && i++ < 3);
-    if (!st.ok()) {
-      return st;
-    }
-    emit statusMessage(tr("Updating bootloader..."), true);
-    st = switchToNWPBootloader();
-    if (!st.ok()) {
-      return st;
-    }
+      emit statusMessage(tr("Updating bootloader..."), true);
+      st = switchToNWPBootloader();
+    } while (!st.ok());
+
     if (failfs_size_ > 0) {
       st = formatFailFS(failfs_size_);
       if (!st.ok()) {
         return st;
       }
     }
+
     for (const QString &f : files_.keys()) {
       st = uploadFile(files_[f], f);
       if (!st.ok()) return st;
     }
+
     if (spiffs_image_.length() > 0) {
       emit statusMessage(tr("Updating file system image..."), true);
       st = updateSPIFFS();
@@ -488,12 +525,14 @@ class FlasherImpl : public Flasher {
       }
     }
 #ifndef NO_LIBFTDI
-    emit statusMessage(tr("Rebooting into firmware..."), true);
-    st = boot(ctx.get());
-    if (!st.ok()) {
-      return st;
-    }
+    if (ftdiCtx_ != nullptr) {
+      emit statusMessage(tr("Rebooting into firmware..."), true);
+      st = boot(ftdiCtx_);
+      if (!st.ok()) return st;
+    } else
 #endif
+      prompter_->Prompt(tr("Please remove the SOP2 jumper and reboot"),
+                        {{tr("Ok"), Prompter::ButtonRole::Yes}});
     return util::Status::OK;
   }
 
@@ -972,49 +1011,43 @@ class FlasherImpl : public Flasher {
   }
 
   mutable QMutex lock_;
+
+  QSerialPort *port_;
+#ifndef NO_LIBFTDI
+  ftdi_context *ftdiCtx_;
+#endif
+  Prompter *prompter_;
+
   QByteArray spiffs_image_;
   QMap<QString, QByteArray> files_;
   QMap<QString, QByteArray> fileSignatures_;
   QMap<QString, QByteArray> extra_spiffs_files_;
-  QSerialPort *port_;
   bool merge_spiffs_ = false;
   int failfs_size_ = -1;
   int progress_ = 0;
 };
 
+#ifndef NO_LIBFTDI
 class CC3200HAL : public HAL {
  public:
-  CC3200HAL(QSerialPort *port) : port_(port) {
+  CC3200HAL(QSerialPort *port) : port_(port), ftdiCtx_(ftdi_new(), ftdi_free) {
+    auto ftdi = openFTDI();
+    if (ftdi.ok()) {
+      ftdiCtx_.reset(ftdi.MoveValueOrDie());
+    } else {
+      // This may be ok if the device being used is not a Launchpad.
+      qWarning() << "Unable to open FTDI context";
+      ftdiCtx_.reset();
+    }
   }
 
   util::Status probe() const override {
-    util::Status st = setSpeed(port_, kSerialSpeed);
-    if (!st.ok()) return st;
-#ifndef NO_LIBFTDI
-    auto ftdi = openFTDI();
-    if (!ftdi.ok()) {
-      return ftdi.status();
-    }
-    std::unique_ptr<ftdi_context, void (*) (ftdi_context *) > ctx(
-        ftdi.ValueOrDie(), ftdi_free);
-#endif
-    int i = 1;
-    do {
-#ifndef NO_LIBFTDI
-      st = resetSomething(ctx.get());
-#else
-      st = util::Status::OK;
-#endif
-      if (st.ok()) {
-        st = doBreak(port_);
-      }
-    } while (!st.ok() && i++ < 3);
-    return st;
+    return connectToBootLoader(port_, ftdiCtx_.get());
   }
 
   std::unique_ptr<Flasher> flasher(Prompter *prompter) const override {
-    (void) prompter;  // TODO(rojer): Add prompts to flasher.
-    return std::move(std::unique_ptr<Flasher>(new FlasherImpl(port_)));
+    return std::move(std::unique_ptr<Flasher>(
+        new FlasherImpl(port_, ftdiCtx_.get(), prompter)));
   }
 
   std::string name() const override {
@@ -1022,23 +1055,41 @@ class CC3200HAL : public HAL {
   }
 
   util::Status reboot() override {
-#ifdef NO_LIBFTDI
+    return boot(ftdiCtx_.get());
+  }
+
+ private:
+  QSerialPort *port_;
+  std::unique_ptr<ftdi_context, void (*)(ftdi_context *) > ftdiCtx_;
+};
+#else   // NO_LIBFTDI
+class CC3200HAL : public HAL {
+ public:
+  CC3200HAL(QSerialPort *port) : port_(port) {
+  }
+
+  util::Status probe() const override {
+    return connectToBootLoader(port_);
+  }
+
+  std::unique_ptr<Flasher> flasher(Prompter *prompter) const override {
+    return std::move(
+        std::unique_ptr<Flasher>(new FlasherImpl(port_, prompter)));
+  }
+
+  std::string name() const override {
+    return "CC3200";
+  }
+
+  util::Status reboot() override {
     return util::Status(util::error::UNIMPLEMENTED,
                         "Rebooting CC3200 is not supported");
-#else   // NO_LIBFTDI
-    auto ftdi = openFTDI();
-    if (!ftdi.ok()) {
-      return ftdi.status();
-    }
-    std::unique_ptr<ftdi_context, void (*) (ftdi_context *) > ctx(
-        ftdi.ValueOrDie(), ftdi_free);
-    return boot(ctx.get());
-#endif  // NO_LIBFTDI
   }
 
  private:
   QSerialPort *port_;
 };
+#endif  // NO_LIBFTDI
 
 }  // namespace
 

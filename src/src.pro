@@ -139,7 +139,7 @@ macx {
   LIBS += -lftdi -lusb
 }
 win32 {
- DEFINES += NO_LIBFTDI
+  DEFINES += NO_LIBFTDI
 }
 
 macx {

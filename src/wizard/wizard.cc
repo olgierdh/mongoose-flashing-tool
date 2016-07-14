@@ -283,6 +283,7 @@ void WizardDialog::currentStepChanged() {
     ui_.nextBtn->setFocus();
     fwc_.reset();
     ui_.s2_1_progress->hide();
+    ui_.s2_1_status->hide();
     if (selectedFirmwareURL_.toString() == "") {
       hal_->reboot();
       emit flashingDone("skipped", true /* success */);
@@ -546,13 +547,8 @@ void WizardDialog::flashFirmware(const QString &fileName) {
   connect(f.get(), &Flasher::progress, this, &WizardDialog::flashingProgress);
   connect(f.get(), &Flasher::done,
           [this]() { port_->moveToThread(this->thread()); });
-  /* TODO(rojer)
-    connect(f.get(), &Flasher::statusMessage,
-            [this](QString msg, bool important) {
-              setStatusMessage(MsgType::INFO, msg);
-              (void) important;
-            });
-  */
+  connect(f.get(), &Flasher::statusMessage, this,
+          &WizardDialog::flasherStatusMessage);
   connect(f.get(), &Flasher::done, this, &WizardDialog::flashingDone);
 
   // Can't go back while flashing thread is running.
@@ -563,6 +559,13 @@ void WizardDialog::flashFirmware(const QString &fileName) {
   port_->moveToThread(worker_.get());
   worker_->start();
   QTimer::singleShot(0, f.release(), &Flasher::run);
+}
+
+void WizardDialog::flasherStatusMessage(QString msg, bool important) {
+  if (important) {
+    ui_.s2_1_status->show();
+    ui_.s2_1_status->setText(msg);
+  }
 }
 
 void WizardDialog::flashingProgress(int bytesWritten) {
@@ -576,6 +579,7 @@ void WizardDialog::flashingDone(QString msg, bool success) {
   if (worker_ != nullptr) worker_->quit();
   ui_.prevBtn->setEnabled(true);
   ui_.s2_1_progress->hide();
+  ui_.s2_1_status->hide();
   if (success) {
     ui_.s2_1_title->setText(tr("FIRMWARE IS BOOTING ..."));
     setSpeed(port_.get(), config_->value("console-baud-rate").toInt());
@@ -605,7 +609,7 @@ void WizardDialog::fwConnectResult(util::Status st) {
           &WizardDialog::updateWiFiStatus);
   connect(fwc_.get(), &FWClient::clubbyStatus, this,
           &WizardDialog::clubbyStatus);
-  gotConfig_ = gotNetworks_ = false;
+  gotNetworks_ = false;
   scanResults_.clear();
   ui_.s3_wifiName->clear();
   ui_.s3_wifiPass->clear();
@@ -616,10 +620,8 @@ void WizardDialog::fwConnectResult(util::Status st) {
 void WizardDialog::updateSysConfig(QJsonObject config) {
   qInfo() << "Sys config:" << config;
   devConfig_ = config;
-  gotConfig_ = true;
   if (currentStep() == Step::WiFiConfig) {
-    ui_.nextBtn->setEnabled(gotConfig_ &&
-                            !ui_.s3_wifiName->currentText().isEmpty());
+    ui_.nextBtn->setEnabled(!ui_.s3_wifiName->currentText().isEmpty());
   }
 }
 
@@ -685,8 +687,7 @@ void WizardDialog::doWifiScan() {
 
 void WizardDialog::wifiNameChanged() {
   if (currentStep() == Step::WiFiConfig) {
-    ui_.nextBtn->setEnabled(gotConfig_ &&
-                            !ui_.s3_wifiName->currentText().isEmpty());
+    ui_.nextBtn->setEnabled(!ui_.s3_wifiName->currentText().isEmpty());
   }
 }
 

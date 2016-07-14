@@ -22,55 +22,70 @@ SIGN_CERT = code.crt.pem
 SIGN_KEY  = code.key.enc.pem
 
 ifneq ($(wildcard common),)
-REPO_ROOT = $(shell realpath .)
+REPO_PATH = $(CURDIR)
 MFT_SUBDIR =
 else
-REPO_ROOT = $(shell realpath ..)
+REPO_PATH = $(CURDIR)/..
 MFT_SUBDIR = mft
 endif
 
+SRC_DIR = ./src
 BIN_DIR = ./bin
 OUT_DIR = ./out
 QMAKE_ARGS = -config static -config release
+FW_META_CMD = $(REPO_PATH)/common/tools/fw_meta.py
+VERSION = $(shell $(FW_META_CMD) get src/build_info.json build_version)
 
 .PHONY: clean mac ubuntu32 ubuntu64 win
 
-mac: $(OUT_DIR) $(OUT_DIR)/MFT-mac.zip
-ubuntu32: $(OUT_DIR) $(OUT_DIR)/MFT-ubuntu32.tar.xz
-ubuntu64: $(OUT_DIR) $(OUT_DIR)/MFT-ubuntu64.tar.xz
-win: $(OUT_DIR) $(OUT_DIR)/MFT-win.zip
+mac: $(OUT_DIR) $(OUT_DIR)/MongooseFlashingTool-mac-latest.zip
+win: $(OUT_DIR) $(OUT_DIR)/MongooseFlashingTool-win-latest.zip
+ubuntu32: $(OUT_DIR) $(OUT_DIR)/MFT-ubuntu32-latest.tar.xz
+ubuntu64: $(OUT_DIR) $(OUT_DIR)/MFT-ubuntu64-latest.tar.xz
 
-$(OUT_DIR)/MFT-mac.zip: $(BIN_DIR)/MFT.app
-$(OUT_DIR)/MFT-win.zip: $(BIN_DIR)/MFT.exe
-$(OUT_DIR)/MFT-ubuntu32.tar.xz: $(BIN_DIR)/MFT-ubuntu32
-$(OUT_DIR)/MFT-ubuntu64.tar.xz: $(BIN_DIR)/MFT-ubuntu64
+$(OUT_DIR)/MongooseFlashingTool-mac-latest.zip: $(BIN_DIR)/MFT.app
+	mv $< "$(BIN_DIR)/Mongoose Flashing Tool.app"
+	cd $(BIN_DIR) && \
+	  zip -r -9 -y ../$@ "Mongoose Flashing Tool.app"
+	cp $@ $(OUT_DIR)/MongooseFlashingTool-mac-$(VERSION).zip
 
-$(OUT_DIR)/MFT-%.zip:
-	cd $(BIN_DIR) && zip -r -9 -y ../$@ $(notdir $<)
+$(OUT_DIR)/MongooseFlashingTool-win-latest.zip: $(BIN_DIR)/MFT.exe
+	mv $< "$(BIN_DIR)/Mongoose Flashing Tool.exe"
+	cd $(BIN_DIR) && \
+	  zip -9 -y ../$@ "Mongoose Flashing Tool.exe"
+	cp $@ $(OUT_DIR)/MongooseFlashingTool-win-$(VERSION).zip
+
+$(OUT_DIR)/MFT-ubuntu32-latest.tar.xz: $(BIN_DIR)/MFT-ubuntu32
+$(OUT_DIR)/MFT-ubuntu64-latest.tar.xz: $(BIN_DIR)/MFT-ubuntu64
 
 $(OUT_DIR)/MFT-%.tar.xz:
 	cd $(BIN_DIR) && tar cvJf ../$@ $(notdir $<)
+	cp $@ $(OUT_DIR)/MFT-$*-$(VERSION).tar.xz
 
 $(BIN_DIR) $(OUT_DIR):
 	mkdir -p $@
 
-$(BIN_DIR)/MFT.app: $(BIN_DIR)
+$(BIN_DIR)/MFT.app: $(BIN_DIR) src/build_info.cc
 	qmake -config release
 	nice make -j $(shell sysctl -n hw.ncpu)
 	if [ z$(SIGN) != z ]; then \
-	  macdeployqt src/MFT.app -codesign=$(SIGN); \
-	  codesign --verify --verbose src/MFT.app; \
+	  macdeployqt $(SRC_DIR)/MFT.app -codesign=$(SIGN); \
+	  codesign --verify --verbose $(SRC_DIR)/MFT.app; \
 	else \
-	  macdeployqt src/MFT.app; \
+	  macdeployqt $(SRC_DIR)/MFT.app; \
 	fi
-	mv -f src/MFT.app $@
+	mv -f $(SRC_DIR)/MFT.app "$@"
 	make distclean
 
-$(BIN_DIR)/MFT.exe: $(BIN_DIR)
-	docker run --rm -it -v $(REPO_ROOT):/src docker.cesanta.com:5000/ourci -lcex '\
+src/build_info.cc: $(FW_META_CMD)
+	$(FW_META_CMD) gen_build_info \
+	  --tag_as_version=true \
+	  --c_output=$@ \
+	  --json_output=src/build_info.json
+
+$(BIN_DIR)/MFT.exe: $(BIN_DIR) src/build_info.cc
+	docker run --rm -it -v $(REPO_PATH):/src docker.cesanta.com:5000/ourci -lcex '\
 	  cd /src/$(MFT_SUBDIR)/src && \
-	  /src/common/tools/fw_meta.py gen_build_info \
-	    --tag_as_version=true --c_output=build_info.cc && \
 	  wine qmake $(QMAKE_ARGS) && \
 	  nice wine mingw32-make -j 3 && \
 	  mv -f release/MFT.exe ../$@; \
@@ -82,10 +97,10 @@ $(BIN_DIR)/MFT.exe: $(BIN_DIR)
 	      -n "Mongoose Flashing Tool" \
 	      -i https://www.cesanta.com/ \
 	      -ts http://tsa.startssl.com/rfc3161 \
-	      -in $@ -out $@.signed && \
-	    mv $@.signed $@; \
+	      -in "$@" -out "$@.signed" && \
+	    mv "$@.signed" "$@"; \
 	  fi; \
-	  rm -rf src/release src/Makefile src/build_info.cc'
+	  rm -rf src/release src/Makefile'
 
 ifneq ($(SIGN),)
 $(BIN_DIR)/MFT.exe: $(SIGN_CERT) $(SIGN_KEY)
@@ -97,8 +112,8 @@ $(SIGN_CERT) $(SIGN_KEY):
 	@echo
 	@exit 1
 
-$(BIN_DIR)/MFT-ubuntu%: $(BIN_DIR)
-	docker run --rm -it -v $(REPO_ROOT):/src \
+$(BIN_DIR)/MFT-ubuntu%: $(BIN_DIR) src/build_info.cc
+	docker run --rm -it -v $(REPO_PATH):/src \
 	  docker.cesanta.com:5000/build-ubuntu$*-qt5static:r1 bash -cx '\
 	    cd /src/$(MFT_SUBDIR) && \
 	    qmake $(QMAKE_ARGS) && \

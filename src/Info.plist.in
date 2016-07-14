@@ -15,9 +15,9 @@
 	<key>CFBundleIdentifier</key>
 	<string>com.cesanta.flashnchips</string>
 	<key>CFBundleDisplayName</key>
-	<string>Flash’n’Chips</string>
+	<string>Mongoose Flashing Tool</string>
 	<key>CFBundleName</key>
-	<string>Flash’n’Chips</string>
+	<string>Mongoose Flashing Tool</string>
 	<key>CFBundleShortVersionString</key>
 	<string>@SHORT_VERSION@</string>
 </dict>

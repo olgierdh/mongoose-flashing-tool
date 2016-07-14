@@ -808,7 +808,7 @@ void WizardDialog::claimBtnClicked() {
     const QByteArray salt =
         QCryptographicHash::hash(QUuid::createUuid().toByteArray(),
                                  QCryptographicHash::Sha256)
-            .toBase64()
+            .toBase64(QByteArray::Base64UrlEncoding)
             .mid(0, 16);
     const QByteArray h = QCryptographicHash::hash(salt + cloudKey_.toUtf8(),
                                                   QCryptographicHash::Sha256);

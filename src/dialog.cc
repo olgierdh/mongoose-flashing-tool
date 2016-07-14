@@ -106,21 +106,21 @@ MainDialog::MainDialog(Config *config, QWidget *parent)
   ui_.terminal->setFont(fixedFont);
   ui_.terminalInput->installEventFilter(this);
 
-  action_enabled_in_state_.insert(ui_.actionConfigure_Wi_Fi, Terminal);
-  action_enabled_in_state_.insert(ui_.actionUpload_a_file, Terminal);
-  enabled_in_state_.insert(ui_.connectBtn, Connected);
-  enabled_in_state_.insert(ui_.connectBtn, NotConnected);
-  enabled_in_state_.insert(ui_.connectBtn, Terminal);
-  enabled_in_state_.insert(ui_.flashBtn, Connected);
-  enabled_in_state_.insert(ui_.flashBtn, NotConnected);
-  enabled_in_state_.insert(ui_.flashBtn, Terminal);
-  enabled_in_state_.insert(ui_.platformSelector, NoPortSelected);
-  enabled_in_state_.insert(ui_.platformSelector, NotConnected);
-  enabled_in_state_.insert(ui_.portSelector, NotConnected);
-  enabled_in_state_.insert(ui_.rebootBtn, Connected);
-  enabled_in_state_.insert(ui_.rebootBtn, Terminal);
-  enabled_in_state_.insert(ui_.terminalInput, Terminal);
-  enabled_in_state_.insert(ui_.uploadBtn, Terminal);
+  action_enabled_in_state_.insert(ui_.actionConfigure_Wi_Fi, State::Terminal);
+  action_enabled_in_state_.insert(ui_.actionUpload_a_file, State::Terminal);
+  enabled_in_state_.insert(ui_.connectBtn, State::Connected);
+  enabled_in_state_.insert(ui_.connectBtn, State::NotConnected);
+  enabled_in_state_.insert(ui_.connectBtn, State::Terminal);
+  enabled_in_state_.insert(ui_.flashBtn, State::Connected);
+  enabled_in_state_.insert(ui_.flashBtn, State::NotConnected);
+  enabled_in_state_.insert(ui_.flashBtn, State::Terminal);
+  enabled_in_state_.insert(ui_.platformSelector, State::NoPortSelected);
+  enabled_in_state_.insert(ui_.platformSelector, State::NotConnected);
+  enabled_in_state_.insert(ui_.portSelector, State::NotConnected);
+  enabled_in_state_.insert(ui_.rebootBtn, State::Connected);
+  enabled_in_state_.insert(ui_.rebootBtn, State::Terminal);
+  enabled_in_state_.insert(ui_.terminalInput, State::Terminal);
+  enabled_in_state_.insert(ui_.uploadBtn, State::Terminal);
 
   enableControlsForCurrentState();
 
@@ -139,14 +139,14 @@ MainDialog::MainDialog(Config *config, QWidget *parent)
                                 &QComboBox::currentIndexChanged),
           [this](int index) {
             switch (state_) {
-              case NoPortSelected:
+              case State::NoPortSelected:
                 if (index >= 0) {
-                  setState(NotConnected);
+                  setState(State::NotConnected);
                 }
                 break;
-              case NotConnected:
+              case State::NotConnected:
                 if (index < 0) {
-                  setState(NoPortSelected);
+                  setState(State::NoPortSelected);
                 }
                 break;
               default:
@@ -241,15 +241,15 @@ void MainDialog::setState(State newState) {
   enableControlsForCurrentState();
   // TODO(imax): find a better place for this.
   switch (state_) {
-    case NoPortSelected:
-    case NotConnected:
-    case Downloading:
-    case Flashing:
-    case PortGoneWhileFlashing:
+    case State::NoPortSelected:
+    case State::NotConnected:
+    case State::Downloading:
+    case State::Flashing:
+    case State::PortGoneWhileFlashing:
       ui_.connectBtn->setText(tr("&Connect"));
       break;
-    case Connected:
-    case Terminal:
+    case State::Connected:
+    case State::Terminal:
       ui_.connectBtn->setText(tr("Dis&connect"));
       break;
   }
@@ -282,7 +282,7 @@ void MainDialog::showPrompt(
 }
 
 util::Status MainDialog::openSerial() {
-  if (state_ != NotConnected) {
+  if (state_ != State::NotConnected) {
     return util::Status::OK;
   }
   QString portName = ui_.portSelector->currentData().toString();
@@ -311,29 +311,29 @@ util::Status MainDialog::openSerial() {
             }
           });
 
-  setState(Connected);
+  setState(State::Connected);
   return util::Status::OK;
 }
 
 util::Status MainDialog::closeSerial() {
   switch (state_) {
-    case NotConnected:
+    case State::NotConnected:
       return util::Status(util::error::FAILED_PRECONDITION,
                           tr("Port is not connected").toStdString());
-    case Connected:
+    case State::Connected:
       break;
-    case Terminal:
+    case State::Terminal:
       disconnectTerminal();
       readSerial();  // read the remainder of the buffer before closing the port
       break;
-    case Flashing:
-      setState(PortGoneWhileFlashing);
+    case State::Flashing:
+      setState(State::PortGoneWhileFlashing);
       return util::Status::OK;
     default:
       return util::Status(util::error::FAILED_PRECONDITION,
                           tr("Port is in use").toStdString());
   }
-  setState(NotConnected);
+  setState(State::NotConnected);
   serial_port_->close();
   hal_.reset();
   serial_port_.reset();
@@ -344,23 +344,23 @@ void MainDialog::connectDisconnectTerminal() {
   int speed;
   util::Status err;
   switch (state_) {
-    case NoPortSelected:
+    case State::NoPortSelected:
       QMessageBox::critical(this, tr("Error"), tr("No port selected"));
       break;
-    case NotConnected:
+    case State::NotConnected:
       err = openSerial();
       if (!err.ok()) {
         QMessageBox::critical(this, tr("Error"), err.error_message().c_str());
         return;
       }
 
-      if (state_ != Connected) {
+      if (state_ != State::Connected) {
         QMessageBox::critical(this, tr("Error"),
                               tr("Failed to connect to serial port."));
         return;
       }
     // fallthrough
-    case Connected:
+    case State::Connected:
       openConsoleLogFile(false /* truncate */);
       connect(serial_port_.get(), &QIODevice::readyRead, this,
               &MainDialog::readSerial);
@@ -378,23 +378,23 @@ void MainDialog::connectDisconnectTerminal() {
 
       // Write a newline to get a prompt back.
       serial_port_->write(QByteArray("\r\n"));
-      setState(Terminal);
+      setState(State::Terminal);
       ui_.terminalInput->setFocus();
       ui_.terminal->appendPlainText(tr("--- connected"));
       ui_.terminal->appendPlainText("");  // readSerial will append stuff here.
       break;
-    case Terminal:
+    case State::Terminal:
       disconnectTerminal();
       closeSerial();
-    case Downloading:
-    case Flashing:
-    case PortGoneWhileFlashing:
+    case State::Downloading:
+    case State::Flashing:
+    case State::PortGoneWhileFlashing:
       break;
   }
 }
 
 util::Status MainDialog::disconnectTerminal() {
-  if (state_ != Terminal) {
+  if (state_ != State::Terminal) {
     qDebug() << "Attempt to disconnect signals in non-Terminal mode.";
     return util::Status(util::error::FAILED_PRECONDITION,
                         tr("not in terminal mode").toStdString());
@@ -403,7 +403,7 @@ util::Status MainDialog::disconnectTerminal() {
   disconnect(serial_port_.get(), &QIODevice::readyRead, this,
              &MainDialog::readSerial);
 
-  setState(Connected);
+  setState(State::Connected);
   ui_.terminal->appendPlainText(tr("--- disconnected"));
   return util::Status::OK;
 }
@@ -496,7 +496,7 @@ void MainDialog::reboot() {
 }
 
 void MainDialog::updatePortList() {
-  if (state_ != NotConnected && state_ != NoPortSelected &&
+  if (state_ != State::NotConnected && state_ != State::NoPortSelected &&
       QGuiApplication::applicationState() != Qt::ApplicationActive) {
     return;
   }
@@ -565,8 +565,8 @@ void MainDialog::flashingDone(QString msg, bool success) {
     auto *scroll = ui_.terminal->verticalScrollBar();
     scroll->setValue(scroll->maximum());
   }
-  setState(Connected);
-  if (state_ == PortGoneWhileFlashing) {
+  setState(State::Connected);
+  if (state_ == State::PortGoneWhileFlashing) {
     success = false;
     msg = "Port went away while flashing";
   }
@@ -637,7 +637,7 @@ void MainDialog::createHAL() {
 
 void MainDialog::downloadAndFlashFirmware(const QString &url) {
   prevState_ = state_;
-  setState(Downloading);
+  setState(State::Downloading);
   setStatusMessage(MsgType::INFO, "Downloading...");
   if (fd_ == nullptr || fd_->url() != url) {
     fd_.reset(new FileDownloader(url));
@@ -673,17 +673,17 @@ void MainDialog::flashFirmware(const QString &file) {
     // Error already shown by loadFirmwareBundle.
     return;
   }
-  if (state_ == Terminal) disconnectTerminal();
+  if (state_ == State::Terminal) disconnectTerminal();
   util::Status s = openSerial();
   if (!s.ok()) {
     setStatusMessage(MsgType::ERROR, s.ToString().c_str());
     return;
   }
-  if (state_ != Connected) {
+  if (state_ != State::Connected) {
     setStatusMessage(MsgType::ERROR, tr("port is not connected"));
     return;
   }
-  setState(Flashing);
+  setState(State::Flashing);
   // Check if the terminal is scrolled down to the bottom before showing
   // progress bar, so we can scroll it back again after we're done.
   auto *scroll = ui_.terminal->verticalScrollBar();
@@ -991,4 +991,28 @@ void MainDialog::updateConfig(const QString &name) {
     }
     ui_.terminal->setMaximumBlockCount(n);
   }
+}
+
+QString MainDialog::stateToString(MainDialog::State s) {
+  switch (s) {
+    case State::NoPortSelected:
+      return "NoPortSelected";
+    case State::NotConnected:
+      return "NotConnected";
+    case State::Downloading:
+      return "Downloading";
+    case State::Flashing:
+      return "Flashing";
+    case State::PortGoneWhileFlashing:
+      return "PortGoneWhileFlashing";
+    case State::Connected:
+      return "Connected";
+    case State::Terminal:
+      return "Terminal";
+  }
+  return "";  // Not reached, compilers are dumb.
+}
+
+QDebug &operator<<(QDebug &d, const MainDialog::State s) {
+  return d << MainDialog::stateToString(s);
 }

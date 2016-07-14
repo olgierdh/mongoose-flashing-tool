@@ -53,7 +53,7 @@ class MainDialog : public QMainWindow {
   void closeEvent(QCloseEvent *event);
 
  private:
-  enum State {
+  enum class State {
     NoPortSelected,
     NotConnected,
     Connected,
@@ -118,6 +118,7 @@ signals:
   void flashFirmware(const QString &file);
   util::Status loadFirmwareBundle(const QString &fileName);
   void openConsoleLogFile(bool truncate);
+  static QString stateToString(MainDialog::State s);
 
   Config *config_ = nullptr;
   bool skip_detect_warning_ = false;
@@ -145,9 +146,11 @@ signals:
   std::unique_ptr<FileDownloader> fd_;
   State prevState_;
 
-  State state_ = NoPortSelected;
+  State state_ = State::NoPortSelected;
 
   Ui::MainWindow ui_;
+
+  friend QDebug &operator<<(QDebug &d, const State s);
 };
 
 #endif /* CS_MFT_SRC_DIALOG_H_ */

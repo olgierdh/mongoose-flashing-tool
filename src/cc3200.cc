@@ -358,32 +358,38 @@ class FlasherImpl : public Flasher {
           continue;
         }
       }
-      const auto data = fw->getPartSource(p.name);
-      if (!data.ok()) return data.status();
-      files_[fileName] = data.ValueOrDie();
-      const QString signPart = p.attrs["sign"].toString();
-      if (signPart != "") {
-        const auto sdr = fw->getPartSource(signPart);
-        if (!sdr.ok()) {
-          return QSP(tr("Unable to get signature data for part %1 (part %2)")
-                         .arg(p.name)
-                         .arg(signPart),
-                     sdr.status());
+      SLFSFileInfo fi;
+      fi.name = fileName;
+      if (p.attrs["src"].type() == QVariant::String) {
+        const auto data = fw->getPartSource(p.name);
+        if (!data.ok()) return data.status();
+        fi.data = data.ValueOrDie();
+        const QString signPart = p.attrs["sign"].toString();
+        if (signPart != "") {
+          const auto sdr = fw->getPartSource(signPart);
+          if (!sdr.ok()) {
+            return QSP(tr("Unable to get signature data for part %1 (part %2)")
+                           .arg(p.name)
+                           .arg(signPart),
+                       sdr.status());
+          }
+          const QByteArray signData = sdr.ValueOrDie();
+          if (signData.length() != kFileSignatureLength) {
+            return QS(
+                util::error::INVALID_ARGUMENT,
+                tr("Wrong signature length for part %1: expected %2, got %3")
+                    .arg(p.name)
+                    .arg(kFileSignatureLength)
+                    .arg(signData.length()));
+          }
+          fi.signature = signData;
         }
-        const QByteArray signData = sdr.ValueOrDie();
-        if (signData.length() != kFileSignatureLength) {
-          return QS(
-              util::error::INVALID_ARGUMENT,
-              tr("Wrong signature length for part %1: expected %2, got %3")
-                  .arg(p.name)
-                  .arg(kFileSignatureLength)
-                  .arg(signData.length()));
-        }
-        fileSignatures_[fileName] = signData;
       }
-      qDebug() << "File:" << fileName << data.ValueOrDie().length()
-               << "bytes, type" << type
-               << (signPart.isEmpty() ? "" : "(signed)");
+      if (p.attrs["falloc"].canConvert<int>()) {
+        fi.allocSize = p.attrs["falloc"].toInt();
+      }
+      files_[fileName] = fi;
+      qDebug() << "File:" << fi.toString();
     }
     qInfo() << fw->buildId();
     return util::Status::OK;
@@ -396,7 +402,7 @@ class FlasherImpl : public Flasher {
       r += spiffs_image_.length() + kSPIFFSMetadataSize;
     }
     for (const QString &f : files_.keys()) {
-      r += files_[f].length();
+      r += files_[f].data.length();
     }
     return r;
   }
@@ -471,6 +477,15 @@ class FlasherImpl : public Flasher {
   }
 
  private:
+  struct SLFSFileInfo {
+    QString name;
+    QByteArray data;
+    QByteArray signature;
+    int allocSize = 0;
+
+    QString toString() const;
+  };
+
   util::Status runLocked() {
     util::Status st = util::Status::UNKNOWN;
     progress_ = 0;
@@ -513,7 +528,7 @@ class FlasherImpl : public Flasher {
     }
 
     for (const QString &f : files_.keys()) {
-      st = uploadFile(files_[f], f);
+      st = uploadFile(files_[f]);
       if (!st.ok()) return st;
     }
 
@@ -740,18 +755,19 @@ class FlasherImpl : public Flasher {
     return sendPacket(port_, payload);
   }
 
-  util::Status openFileForWrite(const QString &filename, int len) {
-    emit statusMessage(tr("Uploading %1 (%2 bytes)...").arg(filename).arg(len),
-                       true);
+  util::Status openFileForWrite(const SLFSFileInfo &fi) {
+    int allocSize = fi.data.length();
+    if (fi.allocSize > allocSize) allocSize = fi.allocSize;
+    emit statusMessage(tr("Uploading %1...").arg(fi.toString()), true);
     QByteArray payload;
     QDataStream ps(&payload, QIODevice::WriteOnly);
     ps.setByteOrder(QDataStream::BigEndian);
     quint32 flags = kFileOpenModeCreateIfNotExist;
-    if (!fileSignatures_[filename].isEmpty()) flags |= kFileOpenModeSecure;
+    if (!fi.signature.isEmpty()) flags |= kFileOpenModeSecure;
     const int num_sizes = sizeof(kBlockSizes) / sizeof(kBlockSizes[0]);
     int block_size_index = 0;
     for (; block_size_index < num_sizes; block_size_index++) {
-      if (kBlockSizes[block_size_index] * 255 >= len) {
+      if (kBlockSizes[block_size_index] * 255 >= allocSize) {
         break;
       }
     }
@@ -759,13 +775,13 @@ class FlasherImpl : public Flasher {
       return util::Status(util::error::FAILED_PRECONDITION, "File is too big");
     }
     flags |= (block_size_index & 0xf) << 8;
-    int blocks = len / kBlockSizes[block_size_index];
-    if (len % kBlockSizes[block_size_index] > 0) {
+    int blocks = allocSize / kBlockSizes[block_size_index];
+    if (allocSize % kBlockSizes[block_size_index] > 0) {
       blocks++;
     }
     flags |= blocks & 0xff;
     ps << quint8(kOpcodeStartUpload) << quint32(flags) << quint32(0);
-    payload.append(filename.toUtf8());
+    payload.append(fi.name.toUtf8());
     payload.append('\0');
     payload.append('\0');
     util::Status st = sendPacket(port_, payload, 10000);
@@ -810,30 +826,30 @@ class FlasherImpl : public Flasher {
     return sendPacket(port_, payload);
   }
 
-  util::Status uploadFile(const QByteArray &bytes, const QString &filename) {
-    auto info = getFileInfo(filename);
+  util::Status uploadFile(const SLFSFileInfo &fi) {
+    auto info = getFileInfo(fi.name);
     if (!info.ok()) {
       return info.status();
     }
     util::Status st;
     if (info.ValueOrDie().exists) {
-      st = eraseFile(filename);
+      st = eraseFile(fi.name);
       if (!st.ok()) {
         return st;
       }
     }
-    st = openFileForWrite(filename, bytes.length());
+    st = openFileForWrite(fi);
     if (!st.ok()) {
       return st;
     }
     int start = 0;
-    while (start < bytes.length()) {
+    while (start < fi.data.length()) {
       emit statusMessage(tr("Writing @ 0x%1...").arg(start, 0, 16));
       QByteArray payload;
       QDataStream ps(&payload, QIODevice::WriteOnly);
       ps.setByteOrder(QDataStream::BigEndian);
       ps << quint8(kOpcodeFileChunk) << quint32(start);
-      payload.append(bytes.mid(start, kFileUploadBlockSize));
+      payload.append(fi.data.mid(start, kFileUploadBlockSize));
 
       st = sendPacket(port_, payload);
       if (!st.ok()) {
@@ -844,7 +860,7 @@ class FlasherImpl : public Flasher {
       emit progress(progress_);
     }
     emit statusMessage(tr("Upload finished."), true);
-    return closeFile(fileSignatures_[filename]);
+    return closeFile(fi.signature);
   }
 
   util::StatusOr<FileInfo> getFileInfo(const QString &filename) {
@@ -996,11 +1012,15 @@ class FlasherImpl : public Flasher {
     image.append(meta);
     QString fname = min_seq == 0 ? kFS1Filename : kFS0Filename;
     qInfo() << "Overwriting" << fname;
-    return uploadFile(image, fname);
+    SLFSFileInfo fi;
+    fi.name = fname;
+    fi.data = image;
+    return uploadFile(fi);
   }
 
   util::Status formatFailFS(int size) {
-    emit statusMessage(tr("Formatting SFLASH file system..."), true);
+    emit statusMessage(tr("Formatting SFLASH file system (%1)...").arg(size),
+                       true);
     QByteArray payload;
     QDataStream ps(&payload, QIODevice::WriteOnly);
     ps.setByteOrder(QDataStream::BigEndian);  // NB
@@ -1019,13 +1039,23 @@ class FlasherImpl : public Flasher {
   Prompter *prompter_;
 
   QByteArray spiffs_image_;
-  QMap<QString, QByteArray> files_;
-  QMap<QString, QByteArray> fileSignatures_;
   QMap<QString, QByteArray> extra_spiffs_files_;
+  QMap<QString, SLFSFileInfo> files_;
   bool merge_spiffs_ = false;
   int failfs_size_ = -1;
   int progress_ = 0;
 };
+
+QString FlasherImpl::SLFSFileInfo::toString() const {
+  QString result = tr("%1: size %2").arg(name).arg(data.length());
+  if (allocSize > data.length()) {
+    result += tr(", alloc %1").arg(allocSize);
+  }
+  if (signature.length() > 0) {
+    result += tr(", signed");
+  }
+  return result;
+}
 
 #ifndef NO_LIBFTDI
 class CC3200HAL : public HAL {

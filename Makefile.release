@@ -114,7 +114,7 @@ $(SIGN_CERT) $(SIGN_KEY):
 
 $(BIN_DIR)/MFT-ubuntu%: $(BIN_DIR) src/build_info.cc
 	docker run --rm -it -v $(REPO_PATH):/src \
-	  docker.cesanta.com:5000/build-ubuntu$*-qt5static:r1 bash -cx '\
+	  docker.cesanta.com:5000/ubuntu$*-qt5static:r1 bash -cx '\
 	    cd /src/$(MFT_SUBDIR) && \
 	    qmake $(QMAKE_ARGS) && \
 	    nice make -j 3 && \

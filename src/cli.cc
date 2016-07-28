@@ -200,11 +200,26 @@ util::Status CLI::console() {
   cin->open(fileno(stdin), QIODevice::ReadOnly);
   QFile *cout = new QFile();
   cout->open(fileno(stdout), QIODevice::WriteOnly);
+
+  QFile *console_log = nullptr;
+  if (config_->isSet("console-log")) {
+    QString fn = config_->value("console-log");
+    console_log = new QFile(fn, this);
+    if (!console_log->open(QIODevice::ReadWrite | QIODevice::Append)) {
+      return QS(util::error::UNAVAILABLE, tr("Error opening %1").arg(fn));
+    }
+  }
+
   QSocketNotifier *qsn =
       new QSocketNotifier(fileno(stdin), QSocketNotifier::Read, this);
   fcntl(0, F_SETFL, fcntl(0, F_GETFL, 0) | O_NONBLOCK);
-  connect(port_.get(), &QIODevice::readyRead, [port, cout]() {
-    cout->write(port->readAll());
+  connect(port_.get(), &QIODevice::readyRead, [port, cout, console_log]() {
+    QByteArray data = port->readAll();
+    if (console_log != nullptr) {
+      console_log->write(data);
+      console_log->flush();
+    }
+    cout->write(data);
     cout->flush();
   });
   connect(qsn, &QSocketNotifier::activated,

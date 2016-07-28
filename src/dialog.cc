@@ -59,11 +59,6 @@ void MainDialog::addOptions(Config *config) {
   opts.append(QCommandLineOption(
       "console-line-count",
       "Maximum number of lines to keep in console window.", "count", "4096"));
-  opts.append(QCommandLineOption(
-      "console-log",
-      "If set, bytes read from a serial port in console mode will be "
-      "appended to the given file.",
-      "file"));
   config->addOptions(opts);
 }
 

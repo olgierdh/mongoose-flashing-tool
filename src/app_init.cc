@@ -46,6 +46,11 @@ util::Status initApp(int *argc, char *argv[], Config *config,
       "console-baud-rate", "Baud rate to use with the console serial port.",
       "number", "115200"));
   commonOpts.append(QCommandLineOption(
+      "console-log",
+      "If set, bytes read from a serial port in console mode will be "
+      "appended to the given file.",
+      "file"));
+  commonOpts.append(QCommandLineOption(
       Flasher::kMergeFSOption,
       "If set, merge the device FS data with the factory image"));
   commonOpts.append(QCommandLineOption(

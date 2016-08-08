@@ -175,9 +175,9 @@ void FWClient::doConnectAttempt() {
 void FWClient::portReadyRead() {
   {
     QByteArray buf = port_->readAll();
+    buf_ += buf;
     qDebug() << "Got" << buf.length() << "bytes, total" << buf_.length();
     qDebug() << buf;
-    buf_ += buf;
   }
   // Consume all the responses in the buffer.
   int beginIndex, endIndex;
@@ -193,10 +193,6 @@ void FWClient::portReadyRead() {
     parseMessage(content);
     buf_ = buf_.left(beginIndex) + buf_.mid(endIndex + endMarker_.length());
     qDebug() << buf_;
-    while (buf_.length() > 0 && !buf_.endsWith(kPromptEnd) &&
-           std::isspace(buf_[buf_.length() - 1])) {
-      buf_.chop(1);
-    }
     beginIndex = -1;
   }
   // Sync with the device by waiting for prompt to appear.

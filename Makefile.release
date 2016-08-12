@@ -80,7 +80,7 @@ src/build_info.cc: $(FW_META_CMD)
 	  --json_output=src/build_info.json
 
 $(BIN_DIR)/MFT.exe: $(BIN_DIR) src/build_info.cc
-	docker run --rm -it -v $(REPO_PATH):/src docker.cesanta.com:5000/ourci -lcex '\
+	docker run --rm -it -v $(REPO_PATH):/src docker.cesanta.com/ourci -lcex '\
 	  cd /src/$(MFT_SUBDIR)/src && \
 	  wine qmake $(QMAKE_ARGS) && \
 	  nice wine mingw32-make -j 3 && \
@@ -110,7 +110,7 @@ $(SIGN_CERT) $(SIGN_KEY):
 
 $(BIN_DIR)/MFT: $(BIN_DIR) src/build_info.cc
 	docker run --rm -it -v $(REPO_PATH):/src \
-	  docker.cesanta.com:5000/ubuntu64-qt5static:r1 bash -cx '\
+	  docker.cesanta.com/ubuntu64-qt5static:r1 bash -cx '\
 	    cd /src/$(MFT_SUBDIR) && \
 	    qmake $(QMAKE_ARGS) && \
 	    nice make -j 3 && \

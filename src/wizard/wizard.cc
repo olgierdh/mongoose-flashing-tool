@@ -72,7 +72,7 @@ void WizardDialog::addOptions(Config *config) {
                                  "api.mongoose-iot.com"));
   opts.append(QCommandLineOption(kCloudFrontendUrlOption,
                                  "URL of the cloud frontend", "URL",
-                                 "https://mongoose-iot.com"));
+                                 "https://console.mongoose-iot.com"));
   config->addOptions(opts);
 }
 

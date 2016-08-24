@@ -37,6 +37,7 @@ namespace ESP8266 {
 
 namespace {
 
+const char kFlashEraseChipOption[] = "esp8266-flash-erase-chip";
 const char kFlashParamsOption[] = "esp8266-flash-params";
 const char kFlashSizeOption[] = "esp8266-flash-size";
 const char kFlashingDataPortOption[] = "esp8266-flashing-data-port";
@@ -50,6 +51,7 @@ const int kDefaultROMBaudRate = 115200;
 const int kDefaultFlashBaudRate = 230400;
 /* Last 16K of flash are reserved for system params. */
 const quint32 kSystemParamsAreaSize = 16 * 1024;
+const char kSystemParamsPartType[] = "sys_params";
 
 #define FLASHING_MSG                                             \
   "Failed to talk to bootloader. See <a "                        \
@@ -71,6 +73,13 @@ class FlasherImpl : public Flasher {
       auto res = parseSize(value);
       if (res.ok()) flashSize_ = res.ValueOrDie();
       return res.status();
+    } else if (name == kFlashEraseChipOption) {
+      if (value.type() != QVariant::Bool) {
+        return util::Status(util::error::INVALID_ARGUMENT,
+                            "value must be boolean");
+      }
+      erase_chip_ = value.toBool();
+      return util::Status::OK;
     } else if (name == kMergeFSOption) {
       if (value.type() != QVariant::Bool) {
         return util::Status(util::error::INVALID_ARGUMENT,
@@ -145,9 +154,10 @@ class FlasherImpl : public Flasher {
   util::Status setOptionsFromConfig(const Config &config) override {
     util::Status r;
 
-    QStringList boolOpts({kMergeFSOption, kNoMinimizeWritesOption});
+    QStringList boolOpts(
+        {kMergeFSOption, kNoMinimizeWritesOption, kFlashEraseChipOption});
     for (const auto &opt : boolOpts) {
-      auto s = setOption(opt, config.isSet(opt));
+      auto s = setOption(opt, config.boolValue(opt));
       if (!s.ok()) {
         return util::Status(
             s.error_code(),
@@ -207,7 +217,8 @@ class FlasherImpl : public Flasher {
       if (!data.ok()) return data.status();
       qInfo() << p.name << ":" << data.ValueOrDie().length() << "@" << hex
               << showbase << addr;
-      blobs_[addr] = data.ValueOrDie();
+      images_[addr] = {
+          .addr = addr, .data = data.ValueOrDie(), .attrs = p.attrs};
     }
     return util::Status::OK;
   }
@@ -215,12 +226,12 @@ class FlasherImpl : public Flasher {
   int totalBytes() const override {
     QMutexLocker lock(&lock_);
     int r = 0;
-    for (const auto &bytes : blobs_.values()) {
-      r += bytes.length();
+    for (const auto &image : images_.values()) {
+      r += image.data.length();
     }
     // Add FS once again for reading.
-    if (merge_flash_filesystem_ && blobs_.contains(spiffs_offset_)) {
-      r += blobs_[spiffs_offset_].length();
+    if (merge_flash_filesystem_ && images_.contains(spiffs_offset_)) {
+      r += images_[spiffs_offset_].data.length();
     }
     return r;
   }
@@ -271,8 +282,14 @@ class FlasherImpl : public Flasher {
   }
 
  private:
+  struct Image {
+    ulong addr;
+    QByteArray data;
+    QMap<QString, QVariant> attrs;
+  };
+
   util::Status runLocked() {
-    if (blobs_.empty()) {
+    if (images_.empty()) {
       return QS(util::error::FAILED_PRECONDITION, tr("No firmware loaded"));
     }
     progress_ = 0;
@@ -304,7 +321,8 @@ class FlasherImpl : public Flasher {
       }
     }
 
-    emit statusMessage("Running flasher...", true);
+    emit statusMessage(tr("Running flasher @ %1...").arg(flashing_speed_),
+                       true);
 
     ESPFlasherClient flasher_client(&rom);
 
@@ -336,14 +354,19 @@ class FlasherImpl : public Flasher {
             << ", defaulting 512K. You may want to specify size explicitly "
                "using --flash-size.";
         flashSize_ = 512 * 1024;  // A safe default.
+      } else {
+        emit statusMessage(tr("Detected flash size: %1").arg(flashSize_), true);
       }
     }
     qInfo() << "Flash size:" << flashSize_;
 
-    st = sanityCheckImages(blobs_, flashSize_, flasher_client.kFlashSectorSize);
+    /* Based on our knowledge of flash size, adjust type=sys_params image. */
+    adjustSysParamsLocation(flashSize_);
+
+    st = sanityCheckImages(flashSize_, flasher_client.kFlashSectorSize);
     if (!st.ok()) return st;
 
-    if (blobs_.contains(0) && blobs_[0].length() >= 4) {
+    if (images_.contains(0) && images_[0].data.length() >= 4) {
       int flashParams = 0;
       if (override_flash_params_ >= 0) {
         flashParams = override_flash_params_;
@@ -356,8 +379,8 @@ class FlasherImpl : public Flasher {
             flashParamsFromString(
                 tr("dio,%1m,40m").arg(flashSize_ * 8 / 1048576)).ValueOrDie();
       }
-      blobs_[0][2] = (flashParams >> 8) & 0xff;
-      blobs_[0][3] = flashParams & 0xff;
+      images_[0].data[2] = (flashParams >> 8) & 0xff;
+      images_[0].data[3] = flashParams & 0xff;
       emit statusMessage(
           tr("Setting flash params to 0x%1").arg(flashParams, 0, 16), true);
     }
@@ -366,13 +389,13 @@ class FlasherImpl : public Flasher {
                    .arg(spiffs_size_)
                    .arg(spiffs_offset_, 0, 16)
                    .toUtf8();
-    if (merge_flash_filesystem_ && blobs_.contains(spiffs_offset_)) {
+    if (merge_flash_filesystem_ && images_.contains(spiffs_offset_)) {
       auto res = mergeFlashLocked(&flasher_client);
       if (res.ok()) {
         if (res.ValueOrDie().size() > 0) {
-          blobs_[spiffs_offset_] = res.ValueOrDie();
+          images_[spiffs_offset_].data = res.ValueOrDie();
         } else {
-          blobs_.remove(spiffs_offset_);
+          images_.remove(spiffs_offset_);
         }
         emit statusMessage(tr("Merged flash content"), true);
       } else {
@@ -384,11 +407,19 @@ class FlasherImpl : public Flasher {
       qInfo() << "No SPIFFS image in new firmware";
     }
 
-    auto flashImages =
-        minimize_writes_ ? dedupImages(&flasher_client, blobs_) : blobs_;
+    auto flashImages = images_;
+    if (erase_chip_) {
+      emit statusMessage(tr("Erasing chip..."), true);
+      st = flasher_client.eraseChip();
+      if (!st.ok()) return st;
+    } else if (minimize_writes_) {
+      flashImages = dedupImages(&flasher_client);
+    }
 
+    emit statusMessage(tr("Writing..."), true);
     for (ulong image_addr : flashImages.keys()) {
-      QByteArray data = flashImages[image_addr];
+      const Image &image = flashImages[image_addr];
+      QByteArray data = image.data;
       emit progress(progress_);
       int origLength = data.length();
 
@@ -400,8 +431,7 @@ class FlasherImpl : public Flasher {
       }
 
       emit statusMessage(
-          tr("Writing %1 @ 0x%2...").arg(data.length()).arg(image_addr, 0, 16),
-          true);
+          tr("  %1 @ 0x%2...").arg(data.length()).arg(image_addr, 0, 16), true);
       connect(
           &flasher_client, &ESPFlasherClient::progress,
           [this, origLength](int bytesWritten) {
@@ -418,7 +448,7 @@ class FlasherImpl : public Flasher {
       progress_ += origLength;
     }
 
-    st = verifyImages(&flasher_client, blobs_);
+    st = verifyImages(&flasher_client);
     if (!st.ok()) return QSP("verification failed", st);
 
     emit statusMessage(tr("Flashing successful, booting firmare..."), true);
@@ -440,17 +470,37 @@ class FlasherImpl : public Flasher {
     return st;
   }
 
-  util::Status sanityCheckImages(const QMap<ulong, QByteArray> &images,
-                                 quint32 flashSize, quint32 flashSectorSize) {
-    const auto keys = images.keys();
+  void adjustSysParamsLocation(quint32 flashSize) {
+    for (auto it = images_.begin(); it != images_.end(); it++) {
+      Image image = it.value();
+      if (image.attrs["type"] == kSystemParamsPartType) {
+        const quint32 systemParamsBegin = flashSize - kSystemParamsAreaSize;
+        if (image.addr != systemParamsBegin) {
+          emit statusMessage(tr("Sys params image moved from 0x%1 to 0x%2")
+                                 .arg(image.addr, 0, 16)
+                                 .arg(systemParamsBegin, 0, 16),
+                             true);
+          images_.erase(it);
+          image.addr = systemParamsBegin;
+          images_[systemParamsBegin] = image;
+          // There can only be one sys_params image anyway.
+          return;
+        }
+      }
+    }
+  }
+
+  util::Status sanityCheckImages(quint32 flashSize, quint32 flashSectorSize) {
+    const auto keys = images_.keys();
     for (int i = 0; i < keys.length(); i++) {
       const quint32 imageBegin = keys[i];
-      const QByteArray &image = images[imageBegin];
-      const quint32 imageEnd = imageBegin + image.length();
+      const Image &image = images_[imageBegin];
+      const QByteArray &data = image.data;
+      const quint32 imageEnd = imageBegin + data.length();
       if (imageBegin >= flashSize || imageEnd > flashSize) {
         return QS(util::error::INVALID_ARGUMENT,
                   tr("Image %1 @ 0x%2 will not fit in flash (size %3)")
-                      .arg(image.length())
+                      .arg(data.length())
                       .arg(imageBegin, 0, 16)
                       .arg(flashSize));
       }
@@ -461,15 +511,18 @@ class FlasherImpl : public Flasher {
                       .arg(imageBegin, 0, 16)
                       .arg(flashSectorSize));
       }
-      if (imageBegin == 0 && image.length() >= 1) {
-        if (image[0] != (char) 0xE9) {
+      if (imageBegin == 0 && data.length() >= 1) {
+        if (data[0] != (char) 0xE9) {
           return QS(util::error::INVALID_ARGUMENT,
                     tr("Invalid magic byte in the first image"));
         }
       }
       const quint32 systemParamsBegin = flashSize - kSystemParamsAreaSize;
       const quint32 systemParamsEnd = flashSize;
-      if (imageBegin < systemParamsEnd && imageEnd > systemParamsBegin) {
+      if (imageBegin == systemParamsBegin &&
+          image.attrs["type"].toString() == kSystemParamsPartType) {
+        // Ok.
+      } else if (imageBegin < systemParamsEnd && imageEnd > systemParamsBegin) {
         return QS(util::error::INVALID_ARGUMENT,
                   tr("Image 0x%1 overlaps with system params area (%2 @ 0x%3)")
                       .arg(imageBegin, 0, 16)
@@ -478,7 +531,8 @@ class FlasherImpl : public Flasher {
       }
       if (i > 0) {
         const quint32 prevImageBegin = keys[i - 1];
-        const quint32 prevImageEnd = keys[i - 1] + images[keys[i - 1]].length();
+        const quint32 prevImageEnd =
+            keys[i - 1] + images_[keys[i - 1]].data.length();
         // We traverse the list in order, so a simple check will suffice.
         if (prevImageEnd > imageBegin) {
           return QS(util::error::INVALID_ARGUMENT,
@@ -520,7 +574,8 @@ class FlasherImpl : public Flasher {
                     << f.errorString();
       }
     }
-    auto merged = mergeFilesystems(dev_fs.ValueOrDie(), blobs_[spiffs_offset_]);
+    auto merged =
+        mergeFilesystems(dev_fs.ValueOrDie(), images_[spiffs_offset_].data);
     if (!merged.ok()) {
       QString msg = tr("Failed to merge file system: ") +
                     QString(merged.status().ToString().c_str()) +
@@ -534,7 +589,7 @@ class FlasherImpl : public Flasher {
         case 0:
           return merged.status();
         case 1:
-          return blobs_[spiffs_offset_];
+          return images_[spiffs_offset_].data;
         case 2:
           return QByteArray();
       }
@@ -542,24 +597,23 @@ class FlasherImpl : public Flasher {
     return merged;
   }
 
-  QMap<ulong, QByteArray> dedupImages(ESPFlasherClient *fc,
-                                      QMap<ulong, QByteArray> images) {
-    QMap<ulong, QByteArray> result;
-    emit statusMessage("Checking existing contents...", true);
-    for (auto im = images.constBegin(); im != images.constEnd(); im++) {
+  QMap<ulong, Image> dedupImages(ESPFlasherClient *fc) {
+    QMap<ulong, Image> result;
+    emit statusMessage("Deduping...", true);
+    for (auto im = images_.constBegin(); im != images_.constEnd(); im++) {
       const ulong addr = im.key();
-      const QByteArray &data = im.value();
-      emit statusMessage(
-          tr("Checksumming %1 @ 0x%2...").arg(data.length()).arg(addr, 0, 16),
-          true);
+      const Image &image = im.value();
+      const QByteArray &data = image.data;
+      qInfo() << tr("Checksumming %1 @ 0x%2...")
+                     .arg(data.length())
+                     .arg(addr, 0, 16);
       ESPFlasherClient::DigestResult digests;
       auto dr = fc->digest(addr, data.length(), fc->kFlashSectorSize);
-      QMap<ulong, QByteArray> newImages;
       if (!dr.ok()) {
         qWarning() << "Error computing digest:" << dr.status();
-        return images;
+        return images_;
       }
-      QMap<ulong, QByteArray> newImage;
+      QMap<ulong, Image> newImages;
       digests = dr.ValueOrDie();
       int numBlocks =
           (data.length() + fc->kFlashSectorSize - 1) / fc->kFlashSectorSize;
@@ -576,9 +630,12 @@ class FlasherImpl : public Flasher {
         if (hash == digests.blockDigests[i]) {
           // This block is the same, skip it. Flush previous image, if any.
           if (newLen > 0) {
-            newImage[newAddr] = data.mid(newAddr - addr, newLen);
+            Image newImage(image);
+            newImage.addr = newAddr;
+            newImage.data = data.mid(newAddr - addr, newLen);
+            newImages[newAddr] = newImage;
             newLen = 0;
-            qDebug() << "New image:" << newImage[newAddr].length() << "@" << hex
+            qDebug() << "New image:" << newImage.data.length() << "@" << hex
                      << showbase << newAddr;
           }
           progress_ += len;
@@ -593,36 +650,44 @@ class FlasherImpl : public Flasher {
         }
       }
       if (newLen > 0) {
-        newImage[newAddr] = data.mid(newAddr - addr, newLen);
-        qDebug() << "New image:" << newImage[newAddr].length() << "@" << hex
+        Image newImage(image);
+        newImage.addr = newAddr;
+        newImage.data = data.mid(newAddr - addr, newLen);
+        newImages[newAddr] = newImage;
+        qDebug() << "New image:" << newImage.data.length() << "@" << hex
                  << showbase << newAddr;
       }
       qInfo() << hex << showbase << addr << "was" << dec << data.length()
               << "now" << newImageSize << "diff"
               << (data.length() - newImageSize);
-      // There's a price for fragmenting a large the image: individual sectors
-      // is slower than erasing a whole block. So unless the difference is
-      // substantial, don't bother.
+      // There's a price for fragmenting a large image: erasing many individual
+      // sectors is slower than erasing a whole block. So unless the difference
+      // is substantial, don't bother.
       if (data.length() - newImageSize >= ESPFlasherClient::kFlashBlockSize) {
-        result.unite(newImage);  // There are no dup keys, so unite is ok.
+        result.unite(newImages);  // There are no dup keys, so unite is ok.
+        emit statusMessage(tr("  %1 @ 0x%2 reduced to %3")
+                               .arg(data.length())
+                               .arg(addr, 0, 16)
+                               .arg(newImageSize),
+                           true);
       } else {
-        result[addr] = data;
+        result[addr] = image;
       }
     }
     qDebug() << "After deduping:" << result.size() << "images";
     return result;
   }
 
-  util::Status verifyImages(ESPFlasherClient *fc,
-                            QMap<ulong, QByteArray> images) {
-    for (auto im = images.constBegin(); im != images.constEnd(); im++) {
-      const ulong addr = im.key();
-      const QByteArray &data = im.value();
-      emit statusMessage(tr("Verifying image at 0x%1...").arg(addr, 0, 16),
-                         true);
+  util::Status verifyImages(ESPFlasherClient *fc) {
+    emit statusMessage("Verifying...", true);
+    for (const auto &image : images_) {
+      const ulong addr = image.addr;
+      const QByteArray &data = image.data;
       auto dr = fc->digest(addr, data.length(), 0 /* no block sums */);
       if (!dr.ok()) {
-        return QSP(tr("failed to compute digest of 0x%1").arg(addr, 0, 16),
+        return QSP(tr("failed to compute digest of %1 @ 0x%2")
+                       .arg(data.length())
+                       .arg(addr, 0, 16),
                    dr.status());
       }
       ESPFlasherClient::DigestResult digests = dr.ValueOrDie();
@@ -632,7 +697,10 @@ class FlasherImpl : public Flasher {
                << digests.digest.toHex();
       if (hash != digests.digest) {
         return QS(util::error::DATA_LOSS,
-                  tr("Hash mismatch for image 0x%1").arg(addr, 0, 16));
+                  tr("digest mismatch for image 0x%1").arg(addr, 0, 16));
+      } else {
+        emit statusMessage(
+            tr("  %1 @ 0x%2 ok").arg(data.length()).arg(addr, 0, 16), true);
       }
     }
     return util::Status::OK;
@@ -642,10 +710,12 @@ class FlasherImpl : public Flasher {
   Prompter *prompter_;
 
   mutable QMutex lock_;
-  QMap<ulong, QByteArray> blobs_;
+
+  QMap<ulong, Image> images_;
   std::unique_ptr<ESPROMClient> rom_;
   int progress_ = 0;
   quint32 flashSize_ = 0;
+  bool erase_chip_ = false;
   qint32 override_flash_params_ = -1;
   bool merge_flash_filesystem_ = false;
   QString flashing_port_name_;
@@ -821,6 +891,9 @@ void addOptions(Config *config) {
       kNoMinimizeWritesOption,
       "If set, no attempt will be made to minimize the number of blocks to "
       "write by comparing current contents with the images being written."));
+  opts.append(QCommandLineOption(kFlashEraseChipOption,
+                                 "If set, erase entire chip before flashing.",
+                                 "<true|false>", "false"));
   config->addOptions(opts);
 }
 

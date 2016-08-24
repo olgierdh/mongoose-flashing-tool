@@ -51,6 +51,9 @@ class Config {
   // value returns a value assigned to a given option.
   QString value(const QString &optionName) const;
 
+  // boolValue returns true if option is set one of the "true-like" values.
+  bool boolValue(const QString &optionName) const;
+
   // fromCommandLine stores takes values for known options from parser and
   // stores them at Flags level.
   void fromCommandLine(const QCommandLineParser &parser);

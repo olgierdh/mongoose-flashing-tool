@@ -59,11 +59,22 @@ QString Config::value(const QString &optionName) const {
   return "";
 }
 
+bool Config::boolValue(const QString &optionName) const {
+  const QString &v = value(optionName);
+  return (v == "true" || v == "yes");
+}
+
 void Config::fromCommandLine(const QCommandLineParser &parser) {
   for (const auto &opt : options_) {
     if (parser.isSet(opt.names()[0])) {
       for (const auto &name : opt.names()) {
-        flags_[name] = parser.value(name);
+        if (!opt.valueName().isEmpty()) {
+          flags_[name] = parser.value(name);
+        } else {
+          // This flag does not expect a value, it's a value-less bool flag
+          // and it being set means it's true.
+          flags_[name] = "true";
+        }
       }
     }
   }

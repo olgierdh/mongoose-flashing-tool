@@ -455,7 +455,7 @@ class FlasherImpl : public Flasher {
     QStringList stringOpts({kFormatFailFS});
 
     for (const auto &opt : boolOpts) {
-      auto s = setOption(opt, config.isSet(opt));
+      auto s = setOption(opt, config.boolValue(opt));
       if (!s.ok()) {
         r = util::Status(
             s.error_code(),

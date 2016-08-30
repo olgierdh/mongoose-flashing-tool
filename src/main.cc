@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
   if (!initApp(&argc, argv, &config, &parser).ok()) return 1;
 
   if (!parser.isSet("flash") && !parser.isSet("console") &&
-      !parser.isSet("probe")) {
+      !parser.isSet("probe") && !parser.isSet("get-mac")) {
     // Run in GUI mode.
     QApplication app(argc, argv);
     parser.process(app);

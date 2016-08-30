@@ -106,6 +106,12 @@ void CLI::run() {
   bool exit = true;
   if (parser_->isSet("probe")) {
     r = hal_->probe();
+  } else if (parser_->isSet("get-mac")) {
+    auto smac = hal_->getMAC();
+    r = smac.status();
+    if (r.ok()) {
+      cout << smac.ValueOrDie().toStdString() << endl;
+    }
   } else if (parser_->isSet("flash")) {
     r = flash(parser_->value("flash"));
     if (r.ok() && parser_->isSet("console")) {

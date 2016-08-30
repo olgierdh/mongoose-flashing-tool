@@ -1075,6 +1075,11 @@ class CC3200HAL : public HAL {
     return connectToBootLoader(port_, ftdiCtx_.get());
   }
 
+  util::StatusOr<QString> getMAC() const override {
+    // on cc3200, we can't get MAC address without booting the fw
+    return util::Status::UNIMPLEMENTED;
+  }
+
   std::unique_ptr<Flasher> flasher(Prompter *prompter) const override {
     return std::move(std::unique_ptr<Flasher>(
         new FlasherImpl(port_, ftdiCtx_.get(), prompter)));
@@ -1100,6 +1105,11 @@ class CC3200HAL : public HAL {
 
   util::Status probe() const override {
     return connectToBootLoader(port_);
+  }
+
+  util::StatusOr<QString> getMAC() const override {
+    // on cc3200, we can't get MAC address without booting the fw
+    return util::Status::UNIMPLEMENTED;
   }
 
   std::unique_ptr<Flasher> flasher(Prompter *prompter) const override {

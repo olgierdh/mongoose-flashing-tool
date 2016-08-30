@@ -750,6 +750,19 @@ class ESP8266HAL : public HAL {
     return util::Status::OK;
   }
 
+  util::StatusOr<QString> getMAC() const override {
+    ESPROMClient rom(port_, port_);
+    if (!rom.connect().ok()) {
+      return QS(util::error::UNAVAILABLE, FLASHING_MSG);
+    }
+    auto mac = rom.readMAC();
+    if (!mac.ok()) {
+      qDebug() << "Error reading MAC address:" << mac.status();
+      return mac.status();
+    }
+    return QString(mac.ValueOrDie().toHex());
+  }
+
   std::unique_ptr<Flasher> flasher(Prompter *prompter) const override {
     return std::move(
         std::unique_ptr<Flasher>(new FlasherImpl(port_, prompter)));

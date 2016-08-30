@@ -84,6 +84,8 @@ util::Status initApp(int *argc, char *argv[], Config *config,
   cliOpts.append(
       QCommandLineOption("probe", "Check device presence on a given port."));
   cliOpts.append(QCommandLineOption(
+      "get-mac", "Output MAC address of the device on a given port."));
+  cliOpts.append(QCommandLineOption(
       "flash", "Flash firmware from the given file.", "file"));
   cliOpts.append(QCommandLineOption(
       {"debug", "d"}, "Enable debug output. Equivalent to --V=4"));

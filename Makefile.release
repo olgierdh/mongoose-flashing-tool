@@ -80,9 +80,7 @@ src/build_info.cc: $(FW_META_CMD)
 	  --json_output=src/build_info.json
 
 $(BIN_DIR)/MFT.exe: $(BIN_DIR) src/build_info.cc
-# Note: If docker is run with TTY for stdin (-t), the build fails with ENOSPC
-# at the linking stage. Magic.
-	docker run --rm -i -v $(REPO_PATH):/src docker.cesanta.com/ourci -lcex '\
+	docker run --rm -it -v $(REPO_PATH):/src docker.cesanta.com/ourci -lcex '\
 	  cd /src/$(MFT_SUBDIR)/src && \
 	  wine qmake $(QMAKE_ARGS) && \
 	  nice wine mingw32-make -j 3 && \

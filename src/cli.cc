@@ -222,6 +222,9 @@ util::Status CLI::console() {
   connect(port_.get(), &QIODevice::readyRead, [port, cout, console_log]() {
     QByteArray data = port->readAll();
     if (console_log != nullptr) {
+      for (int i = 0; i < data.length(); i++) {
+        if (data[i] < ' ' && data[i] != '\r' && data[i] != '\n') data[i] = ' ';
+      }
       console_log->write(data);
       console_log->flush();
     }

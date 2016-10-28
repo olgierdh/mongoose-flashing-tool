@@ -73,8 +73,8 @@ void FWClient::doGetConfig() {
                       "sys:{conf:{wifi:{sta:{ssid:Sys.conf.wifi.sta.ssid,"
                       "pass:Sys.conf.wifi.sta.pass}},"
                       "clubby:{server_address:Sys.conf.clubby.server_address,"
-                      "device_id:Sys.conf.clubby.device_id,"
-                      "device_psk:Sys.conf.clubby.device_psk}},"
+                      "device_id:Sys.conf.device.id,"
+                      "device_psk:Sys.conf.device.password}},"
                       "ro_vars:Sys.ro_vars}}));" END_MARKER_JS);
   sendCommand();
 }
